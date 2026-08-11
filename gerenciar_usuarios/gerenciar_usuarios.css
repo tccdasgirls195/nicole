@@ -10,8 +10,8 @@
 
 body {
     font-family: Arial, Helvetica, sans-serif;
-    background-color: #ffffff;
-    color: #333333;
+    background-color: #f8faf9;
+    color: #333;
 }
 
 
@@ -21,53 +21,69 @@ body {
 
 .menu {
     width: 100%;
-    height: 80px;
+    height: 70px;
 
     display: flex;
     align-items: center;
     justify-content: space-between;
 
-    padding: 0 8%;
+    padding: 0 60px;
 
     background-color: #d9f5e4;
 
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-bottom: 1px solid #c8e8d5;
 }
 
 .logo {
-    font-size: 28px;
+    font-size: 25px;
     font-weight: bold;
-    color: #287c51;
+    color: #4a8f68;
 }
 
 .menu nav {
     display: flex;
-    gap: 35px;
+    align-items: center;
+    gap: 30px;
 }
 
 .menu nav a {
     text-decoration: none;
-    color: #333333;
-    font-size: 16px;
-    font-weight: 500;
+    color: #333;
+
+    font-size: 15px;
 
     transition: 0.2s;
 }
 
 .menu nav a:hover {
-    color: #287c51;
+    color: #4a8f68;
 }
 
 
 /* =====================================================
-   CONTAINER
+   CONTAINER PRINCIPAL
 ===================================================== */
 
 .container {
     width: 90%;
-    max-width: 1250px;
+    max-width: 1200px;
 
-    margin: 50px auto;
+    margin: 45px auto;
+}
+
+
+/* =====================================================
+   ÁREA SUPERIOR DO GERENCIAMENTO
+   Centraliza título, texto, botão e pesquisa
+===================================================== */
+
+.container > h1,
+.container > .subtitulo,
+.container > .novo-usuario,
+.container > .pesquisa {
+    width: 75%;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 
@@ -75,21 +91,56 @@ body {
    TÍTULO
 ===================================================== */
 
-h1 {
-    text-align: center;
+.container h1 {
+    color: #4a8f68;
 
-    font-size: 32px;
-    color: #287c51;
+    font-size: 28px;
 
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
+
+/* =====================================================
+   SUBTÍTULO
+===================================================== */
+
 .subtitulo {
-    text-align: center;
+    color: #777;
 
-    color: #777777;
+    font-size: 14px;
 
-    margin-bottom: 35px;
+    margin-bottom: 25px;
+}
+
+
+/* =====================================================
+   BOTÃO CADASTRAR
+===================================================== */
+
+.novo-usuario {
+    margin-bottom: 25px;
+}
+
+.novo-usuario a {
+    display: inline-block;
+
+    background-color: #7ac795;
+
+    color: white;
+
+    text-decoration: none;
+
+    padding: 11px 18px;
+
+    border-radius: 7px;
+
+    font-size: 14px;
+
+    transition: 0.2s;
+}
+
+.novo-usuario a:hover {
+    background-color: #65b580;
 }
 
 
@@ -100,45 +151,44 @@ h1 {
 .pesquisa {
     display: flex;
 
-    justify-content: center;
-
     gap: 10px;
 
-    margin-bottom: 30px;
+    margin-bottom: 25px;
 }
 
 .pesquisa input {
-    width: 450px;
+    width: 100%;
+    max-width: 400px;
 
-    padding: 14px 18px;
+    padding: 11px 14px;
 
-    border: 1px solid #cccccc;
-    border-radius: 12px;
+    border: 1px solid #d7d7d7;
+
+    border-radius: 7px;
 
     outline: none;
 
-    font-size: 15px;
+    font-size: 14px;
 
-    transition: 0.2s;
+    background-color: white;
 }
 
 .pesquisa input:focus {
-    border-color: #79c99c;
-
-    box-shadow: 0 0 0 3px rgba(121, 201, 156, 0.15);
+    border-color: #7ac795;
 }
 
 .pesquisa button {
+    padding: 11px 18px;
+
     border: none;
 
-    background-color: #75c895;
+    border-radius: 7px;
+
+    background-color: #4a8f68;
+
     color: white;
 
-    padding: 0 25px;
-
-    border-radius: 12px;
-
-    font-size: 15px;
+    font-size: 14px;
 
     cursor: pointer;
 
@@ -146,7 +196,37 @@ h1 {
 }
 
 .pesquisa button:hover {
-    background-color: #5db77e;
+    background-color: #397653;
+}
+
+/* =====================================================
+   BOTÃO CADASTRAR
+===================================================== */
+
+.novo-usuario {
+    margin-bottom: 25px;
+}
+
+.novo-usuario a {
+    display: inline-block;
+
+    background-color: #7ac795 !important;
+
+    color: white !important;
+
+    text-decoration: none;
+
+    padding: 11px 18px;
+
+    border-radius: 7px;
+
+    font-size: 14px;
+
+    transition: 0.2s;
+}
+
+.novo-usuario a:hover {
+    background-color: #65b580 !important;
 }
 
 
@@ -161,9 +241,9 @@ h1 {
 
     background-color: white;
 
-    border-radius: 15px;
+    border: 1px solid #e2e2e2;
 
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border-radius: 10px;
 }
 
 table {
@@ -171,7 +251,7 @@ table {
 
     border-collapse: collapse;
 
-    min-width: 850px;
+    min-width: 800px;
 }
 
 thead {
@@ -179,37 +259,37 @@ thead {
 }
 
 th {
-    padding: 18px 15px;
+    padding: 15px;
 
     text-align: left;
 
-    color: #287c51;
+    color: #4a8f68;
 
-    font-size: 15px;
+    font-size: 14px;
+
+    font-weight: bold;
 }
 
 td {
-    padding: 16px 15px;
+    padding: 14px 15px;
 
     border-top: 1px solid #eeeeee;
 
     font-size: 14px;
-}
 
-tbody tr {
-    transition: 0.2s;
+    vertical-align: middle;
 }
 
 tbody tr:hover {
-    background-color: #f8fffa;
+    background-color: #fafdfb;
 }
 
 
 /* =====================================================
-   TIPOS DE USUÁRIO
+   STATUS
 ===================================================== */
 
-.tipo {
+.status {
     display: inline-block;
 
     padding: 6px 12px;
@@ -221,104 +301,130 @@ tbody tr:hover {
     font-weight: bold;
 }
 
-.administrador {
-    background-color: #e5e5e5;
-    color: #555555;
+.status.ativo {
+    background-color: #dff3e5;
+
+    color: #27834b;
 }
 
-.coordenador {
-    background-color: #e8ddff;
-    color: #7046a8;
+.status.bloqueado {
+    background-color: #fde2df;
+
+    color: #c0392b;
 }
 
-.professor {
-    background-color: #dcecff;
-    color: #3972ad;
-}
-
-.representante {
-    background-color: #fff0c9;
-    color: #987315;
-}
-
-.gestao {
-    background-color: #d8f4e4;
-    color: #287c51;
-}
 
 /* =====================================================
-   NOVO USUARIO
-===================================================== */
-.novo-usuario {
-    text-align: center;
-    margin-bottom: 20px;
-}
-
-.novo-usuario a {
-    display: inline-block;
-
-    padding: 10px 18px;
-
-    background-color: #7ac795;
-    color: white;
-
-    text-decoration: none;
-
-    border-radius: 8px;
-
-    font-size: 14px;
-}
-
-.novo-usuario a:hover {
-    background-color: #65b580;
-}
-
-/* =====================================================
-   AÇÕES
+   ÁREA DOS BOTÕES
 ===================================================== */
 
 .acoes {
+    display: flex;
+
+    align-items: center;
+
+    gap: 7px;
+
     white-space: nowrap;
 }
 
-.acoes a {
+
+/* =====================================================
+   EDITAR - AZUL
+===================================================== */
+
+.acoes a.editar {
     display: inline-block;
 
-    padding: 7px 12px;
+    background-color: #6c8cff !important;
 
-    margin-right: 5px;
-
-    border-radius: 8px;
+    color: white !important;
 
     text-decoration: none;
 
-    font-size: 12px;
+    padding: 8px 14px;
+
+    border-radius: 6px;
+
+    font-size: 13px;
+
+    border: none;
+
+    cursor: pointer;
 
     transition: 0.2s;
 }
 
-.editar {
-    background-color: #e0f0ff;
-    color: #3972ad;
-}
-
-.editar:hover {
-    background-color: #c9e4fa;
-}
-
-.excluir {
-    background-color: #ffe1e1;
-    color: #c44b4b;
-}
-
-.excluir:hover {
-    background-color: #ffcaca;
+.acoes a.editar:hover {
+    background-color: #5575df !important;
 }
 
 
-/* 
+/* =====================================================
+   BLOQUEAR - VERMELHO
+===================================================== */
+
+.acoes a.bloquear {
+    display: inline-block;
+
+    background-color: #e74c3c !important;
+
+    color: white !important;
+
+    text-decoration: none;
+
+    padding: 8px 14px;
+
+    border-radius: 6px;
+
+    font-size: 13px;
+
+    border: none;
+
+    cursor: pointer;
+
+    transition: 0.2s;
+}
+
+.acoes a.bloquear:hover {
+    background-color: #c0392b !important;
+}
+
+
+/* =====================================================
+   ATIVAR - VERDE
+===================================================== */
+
+.acoes a.ativar {
+    display: inline-block;
+
+    background-color: #2ecc71 !important;
+
+    color: white !important;
+
+    text-decoration: none;
+
+    padding: 8px 14px;
+
+    border-radius: 6px;
+
+    font-size: 13px;
+
+    border: none;
+
+    cursor: pointer;
+
+    transition: 0.2s;
+}
+
+.acoes a.ativar:hover {
+    background-color: #27ae60 !important;
+}
+
+
+/* =====================================================
    RESPONSIVIDADE
-*/
+===================================================== */
 
 @media (max-width: 700px) {
 
@@ -339,7 +445,14 @@ tbody tr:hover {
         margin-top: 35px;
     }
 
-    h1 {
+    .container > h1,
+    .container > .subtitulo,
+    .container > .novo-usuario,
+    .container > .pesquisa {
+        width: 100%;
+    }
+
+    .container h1 {
         font-size: 25px;
     }
 
@@ -349,9 +462,47 @@ tbody tr:hover {
 
     .pesquisa input {
         width: 100%;
+        max-width: 100%;
     }
 
     .pesquisa button {
         padding: 13px;
     }
 }
+    .menu nav {
+        gap: 12px;
+    }
+
+    .container {
+        width: 95%;
+
+        margin-top: 30px;
+    }
+
+    .container h1 {
+        font-size: 23px;
+    }
+
+    .pesquisa {
+        flex-direction: column;
+    }
+
+    .pesquisa input {
+        max-width: 100%;
+    }
+
+    .pesquisa button {
+        width: fit-content;
+    }
+
+    .acoes {
+        flex-direction: column;
+
+        align-items: stretch;
+    }
+
+    .acoes a.editar,
+    .acoes a.bloquear,
+    .acoes a.ativar {
+        text-align: center;
+    }
