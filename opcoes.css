@@ -9,7 +9,7 @@ body {
     background: white;
 }
 
-/* Header padronizado com agendamento.css */
+/* Header */
 header {
     height: 90px;
     display: flex;
@@ -38,7 +38,7 @@ nav a {
     font-size: 45px;
 }
 
-/* Faixa do título padronizada com agendamento.css */
+/* Faixa do título */
 .titulo {
     background: #72c67c;
     color: white;
@@ -51,7 +51,7 @@ nav a {
     font-size: 42px;
 }
 
-/* Botão usando a cor verde temática */
+/* Botão  */
 .botoes{
     display: flex;
     justify-content: center;
