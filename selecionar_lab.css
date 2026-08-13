@@ -84,7 +84,7 @@ nav a {
     font-size: 27px;
     font-weight: 500;
 
-    color: #263746;
+    color: #418649;
 }
 
 /* Botão agendar */
@@ -98,10 +98,10 @@ nav a {
 
     background-color: transparent;
 
-    border: 2px solid #69a879;
+    border: 2px solid #418649;
     border-radius: 20px;
 
-    color: #69a879;
+    color: #418649;
 
     font-size: 19px;
     text-decoration: none;
@@ -112,7 +112,7 @@ nav a {
 }
 
 .btn-agendar:hover {
-    background-color: #69a879;
+    background-color: #418649;
     color: white;
 
     cursor: pointer;
