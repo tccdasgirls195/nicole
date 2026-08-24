@@ -327,7 +327,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                     <link
                         rel="stylesheet"
-                        href="editar_usuario.css">
+                        href="../css/editar_usuario.css">
 
                 </head>
 
@@ -923,7 +923,7 @@ if ($tipo == "coordenador") {
 
     <link
         rel="stylesheet"
-        href="editar_usuario.css">
+        href="../css/editar_usuario.css">
 
 </head>
 
@@ -934,9 +934,7 @@ if ($tipo == "coordenador") {
 <header class="menu">
 
     <div class="logo">
-
-        ETEC
-
+        <img src="logo.png">
     </div>
 
 
