@@ -316,7 +316,7 @@ $turmas = $conn->query(
     <title>Cadastrar Usuário</title>
 
     <link rel="stylesheet"
-          href="cadastrar_usuario.css">
+          href="../css/cadastrar_usuario.css">
 
 </head>
 
@@ -327,7 +327,7 @@ $turmas = $conn->query(
 <header class="menu">
 
     <div class="logo">
-        ETEC
+        <img src="logo.png">
     </div>
 
 
