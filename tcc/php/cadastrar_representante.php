@@ -239,7 +239,7 @@ $turmas = $conn->query(
 
 
             <a
-                href="gerenciar_usuarios.php"
+                href="gerenciar_representantes.php"
                 class="voltar"
             >
 
@@ -406,7 +406,7 @@ $turmas = $conn->query(
                 <button
                     type="button"
                     class="cancelar"
-                    onclick="window.location.href='gerenciar_usuarios.php';"
+                    onclick="window.location.href='gerenciar_representantes.php';"
                 >
 
                     Cancelar
