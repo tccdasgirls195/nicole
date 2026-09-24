@@ -181,11 +181,12 @@ $resultRepresentante = $stmt->get_result();
 
 </header>
 
-<main class="container">
+<section class="titulo">
 
-    <h1>
-        Gerenciamento de Representantes
-    </h1>
+    <h1>Gerenciamento de Representantes</h1>
+
+</section>
+<br>
 
     <p class="subtitulo" align="center">
         Gerencie os representantes cadastrados no sistema.
