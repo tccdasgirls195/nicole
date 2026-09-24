@@ -162,12 +162,10 @@ $resultGestao = $stmt->get_result();
 <body>
 
 
-<header class="menu">
-
+<header>
     <div class="logo">
         <img src="../logo.png">
     </div>
-
 
     <nav>
         <a href="">Home</a>
@@ -203,18 +201,15 @@ $resultGestao = $stmt->get_result();
 </header>
 
 
-<main class="container">
-
-
     <!-- =====================================================
          TÍTULO
     ====================================================== -->
 
-    <h1>
-        Gerenciamento de Usuários
-    </h1>
+<section class="titulo">
+    <h1>Gerenciamento de Usuários</h1>
 
-
+</section>
+<br>
     <p class="subtitulo" align="center">
         Gerencie os usuários cadastrados no sistema.
     </p>
