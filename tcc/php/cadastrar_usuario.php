@@ -412,12 +412,12 @@ $turmas = $conn->query(
          FORMULÁRIO
     ================================================== -->
 
-    <main class="container">
+    <section class="titulo">
 
+        <h1>Cadastrar de Usuários</h1>
 
-        <h1>
-            Cadastrar Usuário
-        </h1>
+    </section>
+    <br>
 
 
         <p class="subtitulo">
@@ -425,7 +425,8 @@ $turmas = $conn->query(
             Preencha os dados para cadastrar um novo usuário.
 
         </p>
-
+        
+    <main class="container">
 
 
         <?php if (!empty($erro)): ?>
