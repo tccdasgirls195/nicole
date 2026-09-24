@@ -974,12 +974,12 @@ if ($tipo == "coordenador") {
 
 
 
-<main class="container">
+    <section class="titulo">
 
+        <h1>Editar Usuário</h1>
 
-    <h1>
-        Editar Usuário
-    </h1>
+    </section>
+    <br>
 
 
     <p class="subtitulo">
@@ -988,6 +988,7 @@ if ($tipo == "coordenador") {
 
     </p>
 
+    <main class="container">
 
 
     <?php if (!empty($erro)): ?>
