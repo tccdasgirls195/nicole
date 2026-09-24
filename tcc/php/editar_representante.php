@@ -362,15 +362,19 @@ if (!$usuario) {
 
 </header>
 
-<main class="container">
 
-    <h1>
-        Editar Representante
-    </h1>
+    <section class="titulo">
+
+        <h1>Editar Usuário</h1>
+
+    </section>
+    <br>
 
     <p class="subtitulo">
         Altere os dados do representante.
     </p>
+
+    <main class="container">
 
     <?php if (!empty($erro)): ?>
 
