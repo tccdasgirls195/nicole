@@ -259,20 +259,20 @@ $turmas = $conn->query(
          FORMULÁRIO
     ================================================== -->
 
-    <main class="container">
 
+    <section class="titulo">
 
-        <h1>
-            Cadastrar Representante
-        </h1>
+        <h1>Cadastro de Representantes</h1>
 
-
+    </section>
+    <br>
         <p class="subtitulo">
 
             Preencha os dados para cadastrar um novo representante.
 
         </p>
 
+    <main class="container">
 
 
         <?php if (!empty($erro)): ?>
