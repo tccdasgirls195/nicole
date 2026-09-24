@@ -323,7 +323,7 @@ nav li ul li a:hover{
 
 .formulario input:focus,
 .formulario select:focus{
-    border-color: #5dcc7b;
+    border-color: #72c67c;
     box-shadow: 0 0 0 2px rgba(114,198,124,.15);
 }
 
