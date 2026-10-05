@@ -203,12 +203,14 @@ else {
 
 
 // =====================================================
-// VOLTAR PARA GERENCIAMENTO
+// VOLTAR PARA GERENCIAMENTO COM MENSAGEM DE SUCESSO
 // =====================================================
 
-header(
-    "Location: gerenciar_usuarios.php"
-);
+if ($acao == "bloquear") {
+    header("Location: gerenciar_usuarios.php?mensagem=bloqueado");
+} else {
+    header("Location: gerenciar_usuarios.php?mensagem=ativado");
+}
 
 exit;
 
