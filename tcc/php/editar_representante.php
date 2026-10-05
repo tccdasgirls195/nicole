@@ -231,7 +231,8 @@ $sql = "
     SELECT
         r.*,
         t.serie,
-        t.curso
+        t.curso,
+        t.periodo
     FROM representante r
     LEFT JOIN turma t
         ON r.id_turma = t.id_turma
@@ -466,11 +467,29 @@ if (!$usuario) {
             type="text"
             id="turma"
             value="<?php
-                echo htmlspecialchars(
+
+                $turmaTexto =
                     ($usuario["serie"] ?? "") .
                     " - " .
-                    ($usuario["curso"] ?? "")
-                );
+                    ($usuario["curso"] ?? "") .
+                    " - ";
+
+                if (($usuario["periodo"] ?? "") == "I") {
+
+                    $turmaTexto .= "Integral";
+
+                } elseif (($usuario["periodo"] ?? "") == "N") {
+
+                    $turmaTexto .= "Noturno";
+
+                } else {
+
+                    $turmaTexto .= "Não informado";
+
+                }
+
+                echo htmlspecialchars($turmaTexto);
+
             ?>"
             disabled
         >
