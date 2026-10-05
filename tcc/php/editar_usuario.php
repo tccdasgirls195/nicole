@@ -842,11 +842,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 // BUSCAR USUÁRIO
 // =====================================================
 
-$sql = "
-    SELECT *
-    FROM $tabela
-    WHERE $campoId = ?
-";
+if ($tipo == "representante") {
+
+    $sql = "
+        SELECT
+            r.*,
+            t.serie,
+            t.curso,
+            t.periodo
+        FROM representante r
+        LEFT JOIN turma t
+            ON r.id_turma = t.id_turma
+        WHERE r.id_representante = ?
+    ";
+
+} else {
+
+    $sql = "
+        SELECT *
+        FROM $tabela
+        WHERE $campoId = ?
+    ";
+
+}
 
 $stmt = $conn->prepare($sql);
 
@@ -1244,26 +1262,72 @@ if ($tipo == "coordenador") {
             </div>
 
 
-        <?php else: ?>
+<?php else: ?>
 
 
-            <!-- OUTROS TIPOS NÃO PODEM SER ALTERADOS -->
+    <!-- OUTROS TIPOS NÃO PODEM SER ALTERADOS -->
 
-            <input
-                type="text"
-                id="tipo"
-                value="<?php echo ucfirst($tipo); ?>"
-                disabled
-            >
+    <input
+        type="text"
+        id="tipo"
+        value="<?php echo ucfirst($tipo); ?>"
+        disabled
+    >
 
-            <input
-                type="hidden"
-                name="novo_tipo"
-                value="<?php echo $tipo; ?>"
-            >
+    <input
+        type="hidden"
+        name="novo_tipo"
+        value="<?php echo $tipo; ?>"
+    >
 
 
-        <?php endif; ?>
+    <?php if ($tipo == "representante"): ?>
+
+        <!-- =================================================
+             TURMA DO REPRESENTANTE
+        ================================================== -->
+
+        <label for="turma">
+
+            Turma
+
+        </label>
+
+        <input
+            type="text"
+            id="turma"
+            value="<?php
+
+                $turmaTexto =
+                    ($usuario["serie"] ?? "") .
+                    " - " .
+                    ($usuario["curso"] ?? "") .
+                    " - ";
+
+                if (($usuario["periodo"] ?? "") == "I") {
+
+                    $turmaTexto .= "Integral";
+
+                } elseif (($usuario["periodo"] ?? "") == "N") {
+
+                    $turmaTexto .= "Noturno";
+
+                } else {
+
+                    $turmaTexto .= "Não informado";
+
+                }
+
+                echo htmlspecialchars($turmaTexto);
+
+            ?>"
+            disabled
+        >
+
+    <?php endif; ?>
+
+
+<?php endif; ?>
 
 
 
