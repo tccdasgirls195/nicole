@@ -295,9 +295,9 @@ $coordenadores = $conn->query(
 // =====================================================
 
 $turmas = $conn->query(
-    "SELECT id_turma, serie, curso
+    "SELECT id_turma, serie, curso, periodo
      FROM turma
-     ORDER BY serie, curso"
+     ORDER BY serie, curso, periodo"
 );
 
 ?>
@@ -654,23 +654,23 @@ $turmas = $conn->query(
 
                     <?php while ($turma = $turmas->fetch_assoc()): ?>
 
-                        <option
-                            value="<?php echo $turma["id_turma"]; ?>">
-
+                        <option value="<?php echo $turma["id_turma"]; ?>">
                             <?php
+                                echo htmlspecialchars($turma["serie"]);
+                                echo " - ";
+                                echo htmlspecialchars($turma["curso"]);
+                                echo " - ";
+                                
+                                if ($turma["periodo"] == "I") {
+                                    echo "Integral";
+                                    
+                                } elseif ($turma["periodo"] == "N") {
+                                    echo "Noturno";
 
-                            echo htmlspecialchars(
-                                $turma["serie"]
-                            );
-
-                            echo " - ";
-
-                            echo htmlspecialchars(
-                                $turma["curso"]
-                            );
-
+                                } else {
+                                    echo "Não informado";
+                                }
                             ?>
-
                         </option>
 
                     <?php endwhile; ?>
