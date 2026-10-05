@@ -71,7 +71,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             foreach ($tabelas as $tabela => $id_coluna) {
 
                 // Prepara a instrução SQL para prevenir SQL Injection
-                $sql = "SELECT $id_coluna, email, senha FROM $tabela WHERE LOWER(TRIM(email)) = LOWER(TRIM(?))";
+                $sql = "SELECT $id_coluna, email, senha, status FROM $tabela WHERE LOWER(TRIM(email)) = LOWER(TRIM(?))";
                 $stmt = mysqli_prepare($conexao, $sql);
 
                 if ($stmt) {
@@ -87,6 +87,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     // Se encontrou exatamente 1 registro
                     if (mysqli_num_rows($resultado) === 1) {
                         $usuario = mysqli_fetch_assoc($resultado);
+
+                        // Verifica se o usuário está ativo antes de permitir o acesso
+                        if ($usuario['status'] !== 'Ativo') {
+                            $erro = "Seu acesso está bloqueado. Você não pode acessar o sistema enquanto sua conta estiver bloqueada.";
+                            $usuarioEncontrado = true;
+                            mysqli_stmt_close($stmt);
+                            break;
+                        }
 
                         // a partir daqui, verifica se a senha fornecida corresponde à senha armazenada no banco de dados
                         // mary - dia 12 d0 8 2026 
