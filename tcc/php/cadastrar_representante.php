@@ -107,9 +107,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 // =====================================================
 
 $turmas = $conn->query(
-    "SELECT id_turma, serie, curso
+    "SELECT id_turma, serie, curso, periodo
      FROM turma
-     ORDER BY serie, curso"
+     ORDER BY serie, curso, periodo"
 );
 
 ?>
@@ -367,24 +367,27 @@ $turmas = $conn->query(
 
                     <?php while ($turma = $turmas->fetch_assoc()): ?>
 
-                        <option
-                            value="<?php echo $turma["id_turma"]; ?>"
-                        >
-
+                        <option value="<?php echo $turma["id_turma"]; ?>">
+                            
                             <?php
+                            
+                                echo htmlspecialchars($turma["serie"]);
+                                echo " - ";
+                                echo htmlspecialchars($turma["curso"]);
+                                echo " - ";
 
-                            echo htmlspecialchars(
-                                $turma["serie"]
-                            );
+                                if ($turma["periodo"] == "I") {
+                                    echo "Integral";
+                                } 
 
-                            echo " - ";
-
-                            echo htmlspecialchars(
-                                $turma["curso"]
-                            );
-
+                                elseif ($turma["periodo"] == "N") {
+                                    echo "Noturno";
+                                } 
+                                
+                                else {
+                                    echo "Não informado";
+                                }
                             ?>
-
                         </option>
 
                     <?php endwhile; ?>
