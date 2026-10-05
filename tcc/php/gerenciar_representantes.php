@@ -63,7 +63,8 @@ $sql = "
         r.status,
         r.id_turma,
         t.serie,
-        t.curso
+        t.curso,
+        t.periodo
     FROM representante r
     LEFT JOIN turma t
         ON r.id_turma = t.id_turma
@@ -111,9 +112,84 @@ $resultRepresentante = $stmt->get_result();
     <link rel="stylesheet"
           href="../css/gerenciar_usuarios.css">
 
+
+<style>
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+.modal-overlay.ativo { display: flex; }
+.modal-caixa {
+    width: 420px;
+    max-width: calc(100% - 40px);
+    background: #fff;
+    border-radius: 14px;
+    padding: 28px;
+    text-align: center;
+    box-shadow: 0 8px 30px rgba(0,0,0,.25);
+}
+.modal-icone {
+    width: 58px;
+    height: 58px;
+    margin: 0 auto 15px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff3cd;
+    color: #856404;
+    font-size: 28px;
+    font-weight: bold;
+}
+.modal-caixa h2 { margin: 0 0 10px; color: #333; }
+.modal-caixa p { margin: 0 0 22px; color: #555; }
+.modal-botoes { display: flex; justify-content: center; gap: 12px; }
+.modal-botoes button {
+    border: none;
+    border-radius: 22px;
+    padding: 11px 22px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.btn-cancelar { background: #e9e9e9; color: #555; }
+.btn-confirmar { background: #e52b2b; color: #fff; }
+.btn-confirmar.ativar { background: #5dcc7b; }
+.popup-sucesso {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10000;
+    min-width: 320px;
+    max-width: calc(100% - 40px);
+    padding: 22px 28px;
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0,0,0,.2);
+    text-align: center;
+    font-size: 17px;
+    font-weight: bold;
+}
+.popup-sucesso .check {
+    display: block;
+    font-size: 32px;
+    margin-bottom: 7px;
+}
+</style>
+
 </head>
 
 <body>
+
+
 
 <header class="menu">
 
@@ -333,31 +409,40 @@ $resultRepresentante = $stmt->get_result();
                                 Representante
                             </td>
 
-                            <td>
+<td>
 
-                                <?php
+    <?php
 
-                                if (
-                                    $usuario["serie"] !== null &&
-                                    $usuario["curso"] !== null
-                                ) {
+        if (
+            $usuario["serie"] !== null &&
+            $usuario["curso"] !== null
+        ) {
 
-                                    echo htmlspecialchars(
-                                        $usuario["serie"] .
-                                        " - " .
-                                        $usuario["curso"]
-                                    );
+            echo htmlspecialchars(
+                $usuario["serie"] .
+                " - " .
+                $usuario["curso"] .
+                " - " .
+                (
+                    $usuario["periodo"] == "I"
+                        ? "Integral"
+                        : (
+                            $usuario["periodo"] == "N"
+                                ? "Noturno"
+                                : "Não informado"
+                        )
+                )
+        );
 
-                                } else {
+        } else {
 
-                                    echo "Sem turma";
+            echo "Sem turma";
 
-                                }
+        }
 
-                                ?>
+    ?>
 
-                            </td>
-
+</td>
                             <td>
 
                                 <?php
@@ -396,7 +481,7 @@ $resultRepresentante = $stmt->get_result();
 
                                     <a
                                         href="acoes_representante.php?acao=bloquear&id=<?php echo $usuario["id_representante"]; ?>"
-                                        class="bloquear"
+                                        class="bloquear acao-confirmar"
                                     >
                                         Bloquear
                                     </a>
@@ -405,7 +490,7 @@ $resultRepresentante = $stmt->get_result();
 
                                     <a
                                         href="acoes_representante.php?acao=ativar&id=<?php echo $usuario["id_representante"]; ?>"
-                                        class="ativar"
+                                        class="ativar acao-confirmar"
                                     >
                                         Ativar
                                     </a>
@@ -437,6 +522,83 @@ $resultRepresentante = $stmt->get_result();
     </div>
 
 </main>
+
+
+<div id="modalConfirmacao" class="modal-overlay">
+    <div class="modal-caixa">
+        <div class="modal-icone">!</div>
+        <h2>Confirmar ação</h2>
+        <p id="textoConfirmacao"></p>
+        <div class="modal-botoes">
+            <button type="button" id="btnCancelar" class="btn-cancelar">Cancelar</button>
+            <button type="button" id="btnConfirmar" class="btn-confirmar">Bloquear</button>
+        </div>
+    </div>
+</div>
+
+<?php if (isset($_GET["mensagem"]) && in_array($_GET["mensagem"], ["bloqueado", "ativado"], true)): ?>
+    <div id="popupSucesso" class="popup-sucesso">
+        <span class="check">✓</span>
+        <?php echo $_GET["mensagem"] === "bloqueado" ? "Representante bloqueado com sucesso!" : "Representante ativado com sucesso!"; ?>
+    </div>
+<?php endif; ?>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const modal = document.getElementById("modalConfirmacao");
+    const texto = document.getElementById("textoConfirmacao");
+    const btnConfirmar = document.getElementById("btnConfirmar");
+    const btnCancelar = document.getElementById("btnCancelar");
+    let linkConfirmado = null;
+
+    document.querySelectorAll(".acao-confirmar").forEach(function (link) {
+        link.addEventListener("click", function (event) {
+            event.preventDefault();
+            linkConfirmado = link;
+            const ativar = link.classList.contains("ativar");
+            texto.textContent = ativar
+                ? "Tem certeza que deseja ativar este usuário?"
+                : "Tem certeza que deseja bloquear este usuário?";
+            btnConfirmar.textContent = ativar ? "Ativar" : "Bloquear";
+            btnConfirmar.classList.toggle("ativar", ativar);
+            modal.classList.add("ativo");
+        });
+    });
+
+    btnCancelar.addEventListener("click", function () {
+        modal.classList.remove("ativo");
+        linkConfirmado = null;
+    });
+
+    btnConfirmar.addEventListener("click", function () {
+        if (linkConfirmado) {
+            window.location.href = linkConfirmado.href;
+        }
+    });
+
+    modal.addEventListener("click", function (event) {
+        if (event.target === modal) {
+            modal.classList.remove("ativo");
+            linkConfirmado = null;
+        }
+    });
+
+    const popup = document.getElementById("popupSucesso");
+    if (popup) {
+        setTimeout(function () {
+            popup.style.opacity = "0";
+            popup.style.transition = "opacity .3s";
+            setTimeout(function () { popup.remove(); }, 300);
+        }, 3000);
+
+        if (window.history.replaceState) {
+            const url = new URL(window.location.href);
+            url.searchParams.delete("mensagem");
+            window.history.replaceState({}, document.title, url.pathname + (url.search ? url.search : ""));
+        }
+    }
+});
+</script>
 
 </body>
 
