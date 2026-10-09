@@ -1,18 +1,51 @@
 <?php
-
-$host = "localhost";
-$usuario = "root";
-$senha = "";
-$banco = "MODELO_TCC";
-
-$conn = new mysqli($host, $usuario, $senha, $banco);
-
-if ($conn->connect_error) {
-    die("Erro na conexão com o banco de dados: " . $conn->connect_error);
+// ==========================================================
+// INICIA A SESSÃO
+// ==========================================================
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
-$conn->set_charset("utf8");
+// ==========================================================
+// VERIFICA SE O USUÁRIO ESTÁ LOGADO
+// ==========================================================
+if (!isset($_SESSION['usuario_id'])) {
+    header("Location: login.php");
+    exit();
+}
 
+// ==========================================================
+// VERIFICA O TIPO DE USUÁRIO
+// ==========================================================
+$tipoPermitido = 'administrador';
+
+if (!isset($_SESSION['usuario_tipo']) || $_SESSION['usuario_tipo'] !== $tipoPermitido) {
+    header("Location: login.php");
+    exit();
+}
+
+// ==========================================================
+// LOGOUT
+// ==========================================================
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
+    session_unset();
+    session_destroy();
+    header("Location: login.php");
+    exit();
+}
+
+// ==========================================================
+// CABEÇALHOS ANTI-CACHE
+// ==========================================================
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+header("Expires: 0");
+
+// ==========================================================
+// CONEXÃO COM O BANCO
+// ==========================================================
+require_once __DIR__ . "/conexao.php";
 
 // =====================================================
 // VERIFICAR TIPO E ID
@@ -1454,3 +1487,4 @@ function mostrarCoordenador() {
 $conn->close();
 
 ?>
+
