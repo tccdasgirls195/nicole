@@ -48,285 +48,129 @@ header("Expires: 0");
 require_once __DIR__ . "/conexao.php";
 
 // =====================================================
-// VARIÁVEIS INICIAIS
+// PESQUISA
 // =====================================================
 
-$cadastroSucesso = false;
-$erro = "";
+$pesquisa = "";
 
+if (isset($_GET["pesquisa"])) {
+    $pesquisa = trim($_GET["pesquisa"]);
+}
 
-// =====================================================
-// COMO EXISTE APENAS UM ADMINISTRADOR,
-// USAREMOS O ID 1 AUTOMATICAMENTE
-// =====================================================
-
-$idAdministrador = 1;
+$busca = "%" . $pesquisa . "%";
 
 
 // =====================================================
-// CADASTRAR USUÁRIO
+// FILTRO POR TIPO DE USUÁRIO
 // =====================================================
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-
-    $nome = trim($_POST["nome"]);
-    $email = trim($_POST["email"]);
-    $senhaUsuario = trim($_POST["senha"]);
-    $tipo = $_POST["tipo"];
-
-
-    // =================================================
-    // ADMINISTRADOR
-    // =================================================
-
-    if ($tipo == "administrador") {
-
-        $sql = "INSERT INTO administrador
-                (nome, email, senha, status)
-                VALUES (?, ?, ?, 'Ativo')";
-
-        $stmt = $conn->prepare($sql);
-
-        if ($stmt) {
-
-            $stmt->bind_param(
-                "sss",
-                $nome,
-                $email,
-                $senhaUsuario
-            );
-
-            if ($stmt->execute()) {
-
-                $cadastroSucesso = true;
-
-            } else {
-
-                $erro = "Erro ao cadastrar administrador: "
-                      . $stmt->error;
-
-            }
-
-        } else {
-
-            $erro = "Erro ao preparar o cadastro: "
-                  . $conn->error;
-
-        }
-
-    }
-
-
-    // =================================================
-    // COORDENADOR
-    // =================================================
-
-    elseif ($tipo == "coordenador") {
-
-        $curso = $_POST["curso"];
-
-        $sql = "INSERT INTO coordenador
-                (nome, email, senha, curso, id_administrador, status)
-                VALUES (?, ?, ?, ?, ?, 'Ativo')";
-
-        $stmt = $conn->prepare($sql);
-
-        if ($stmt) {
-
-            $stmt->bind_param(
-                "ssssi",
-                $nome,
-                $email,
-                $senhaUsuario,
-                $curso,
-                $idAdministrador
-            );
-
-            if ($stmt->execute()) {
-
-                $cadastroSucesso = true;
-
-            } else {
-
-                $erro = "Erro ao cadastrar coordenador: "
-                      . $stmt->error;
-
-            }
-
-        } else {
-
-            $erro = "Erro ao preparar o cadastro: "
-                  . $conn->error;
-
-        }
-
-    }
-
-
-    // =================================================
-    // PROFESSOR
-    // =================================================
-
-    elseif ($tipo == "professor") {
-
-        $idCoordenador = intval($_POST["id_coordenador"]);
-
-        $sql = "INSERT INTO professor
-                (nome, email, senha, id_coordenador, id_administrador, status)
-                VALUES (?, ?, ?, ?, ?, 'Ativo')";
-
-        $stmt = $conn->prepare($sql);
-
-        if ($stmt) {
-
-            $stmt->bind_param(
-                "sssii",
-                $nome,
-                $email,
-                $senhaUsuario,
-                $idCoordenador,
-                $idAdministrador
-            );
-
-            if ($stmt->execute()) {
-
-                $cadastroSucesso = true;
-
-            } else {
-
-                $erro = "Erro ao cadastrar professor: "
-                      . $stmt->error;
-
-            }
-
-        } else {
-
-            $erro = "Erro ao preparar o cadastro: "
-                  . $conn->error;
-
-        }
-
-    }
-
-
-    // =================================================
-    // REPRESENTANTE
-    // =================================================
-
-    elseif ($tipo == "representante") {
-
-        $idTurma = intval($_POST["id_turma"]);
-
-        $sql = "INSERT INTO representante
-                (nome, email, senha, id_turma, status)
-                VALUES (?, ?, ?, ?, 'Ativo')";
-
-        $stmt = $conn->prepare($sql);
-
-        if ($stmt) {
-
-            $stmt->bind_param(
-                "sssi",
-                $nome,
-                $email,
-                $senhaUsuario,
-                $idTurma
-            );
-
-            if ($stmt->execute()) {
-
-                $cadastroSucesso = true;
-
-            } else {
-
-                $erro = "Erro ao cadastrar representante: "
-                      . $stmt->error;
-
-            }
-
-        } else {
-
-            $erro = "Erro ao preparar o cadastro: "
-                  . $conn->error;
-
-        }
-
-    }
-
-
-    // =================================================
-    // GESTÃO
-    // =================================================
-
-    elseif ($tipo == "gestao") {
-
-        $sql = "INSERT INTO gestao
-                (nome, email, senha, id_administrador, status)
-                VALUES (?, ?, ?, ?, 'Ativo')";
-
-        $stmt = $conn->prepare($sql);
-
-        if ($stmt) {
-
-            $stmt->bind_param(
-                "sssi",
-                $nome,
-                $email,
-                $senhaUsuario,
-                $idAdministrador
-            );
-
-            if ($stmt->execute()) {
-
-                $cadastroSucesso = true;
-
-            } else {
-
-                $erro = "Erro ao cadastrar gestão: "
-                      . $stmt->error;
-
-            }
-
-        } else {
-
-            $erro = "Erro ao preparar o cadastro: "
-                  . $conn->error;
-
-        }
-
-    }
-
-
-    else {
-
-        $erro = "Selecione um tipo de usuário.";
-
-    }
-
+$tipoFiltro = "";
+
+if (isset($_GET["tipo"])) {
+    $tipoFiltro = $_GET["tipo"];
+}
+
+
+// Só permite os tipos existentes no filtro
+$tiposPermitidos = [
+    "",
+    "administrador",
+    "coordenador",
+    "professor",
+    "representante"
+];
+
+if (!in_array($tipoFiltro, $tiposPermitidos, true)) {
+    $tipoFiltro = "";
 }
 
 
 // =====================================================
-// BUSCAR COORDENADORES
+// ADMINISTRADORES
 // =====================================================
 
-$coordenadores = $conn->query(
-    "SELECT id_coordenador, nome, curso
-     FROM coordenador
-     WHERE status = 'Ativo'
-     ORDER BY nome"
-);
+$sql = "SELECT id_administrador, nome, email, status
+        FROM administrador
+        WHERE nome LIKE ? OR email LIKE ?";
+
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("ss", $busca, $busca);
+$stmt->execute();
+
+$resultAdministrador = $stmt->get_result();
 
 
 // =====================================================
-// BUSCAR TURMAS
+// COORDENADORES
 // =====================================================
 
-$turmas = $conn->query(
-    "SELECT id_turma, serie, curso, periodo
-     FROM turma
-     ORDER BY serie, curso, periodo"
-);
+$sql = "SELECT id_coordenador, nome, email, curso, status
+        FROM coordenador
+        WHERE nome LIKE ? OR email LIKE ?";
+
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("ss", $busca, $busca);
+$stmt->execute();
+
+$resultCoordenador = $stmt->get_result();
+
+
+// =====================================================
+// PROFESSORES
+// =====================================================
+
+$sql = "SELECT id_professor, nome, email, status
+        FROM professor
+        WHERE nome LIKE ? OR email LIKE ?";
+
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("ss", $busca, $busca);
+$stmt->execute();
+
+$resultProfessor = $stmt->get_result();
+
+
+// =====================================================
+// REPRESENTANTES
+// =====================================================
+
+$sql = "SELECT
+            r.id_representante,
+            r.nome,
+            r.email,
+            r.status,
+            t.serie,
+            t.curso,
+            t.periodo
+
+        FROM representante r
+
+        LEFT JOIN turma t
+        ON r.id_turma = t.id_turma
+
+        WHERE r.nome LIKE ?
+        OR r.email LIKE ?";
+
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("ss", $busca, $busca);
+$stmt->execute();
+
+$resultRepresentante = $stmt->get_result();
+
+
+// =====================================================
+// GESTÃO
+// =====================================================
+
+$sql = "SELECT id_gestao, nome, email, status
+        FROM gestao
+        WHERE nome LIKE ? OR email LIKE ?";
+
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("ss", $busca, $busca);
+$stmt->execute();
+
+$resultGestao = $stmt->get_result();
 
 ?>
 
@@ -341,10 +185,86 @@ $turmas = $conn->query(
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
 
-    <title>Cadastrar Usuário</title>
+    <title>Gerenciamento de Usuários</title>
 
     <link rel="stylesheet"
-          href="../css/cadastrar_usuario.css">
+          href="../css/gerenciar_usuarios.css">
+
+
+<style>
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+.modal-overlay.ativo { display: flex; }
+.modal-caixa {
+    width: 420px;
+    max-width: calc(100% - 40px);
+    background: #fff;
+    border-radius: 14px;
+    padding: 28px;
+    text-align: center;
+    box-shadow: 0 8px 30px rgba(0,0,0,.25);
+}
+.modal-icone {
+    width: 58px;
+    height: 58px;
+    margin: 0 auto 15px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff3cd;
+    color: #856404;
+    font-size: 28px;
+    font-weight: bold;
+}
+.modal-caixa h2 { margin: 0 0 10px; color: #333; }
+.modal-caixa p { margin: 0 0 22px; color: #555; }
+.modal-botoes { display: flex; justify-content: center; gap: 12px; }
+.modal-botoes button {
+    border: none;
+    border-radius: 22px;
+    padding: 11px 22px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.btn-cancelar { background: #e9e9e9; color: #555; }
+.btn-confirmar { background: #e52b2b; color: #fff; }
+.btn-confirmar.ativar { background: #5dcc7b; }
+.popup-sucesso {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10000;
+    min-width: 320px;
+    max-width: calc(100% - 40px);
+    padding: 22px 28px;
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0,0,0,.2);
+    text-align: center;
+    font-size: 17px;
+    font-weight: bold;
+}
+.popup-sucesso .check {
+    display: block;
+    font-size: 32px;
+    margin-bottom: 7px;
+}
+</style>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
 
 </head>
 
@@ -352,12 +272,12 @@ $turmas = $conn->query(
 <body>
 
 
-<header class="menu">
 
+
+<header>
     <div class="logo">
         <img src="../logo.png">
     </div>
-
 
     <nav>
         <a href="">Home</a>
@@ -393,424 +313,858 @@ $turmas = $conn->query(
 </header>
 
 
+    <!-- =====================================================
+         TÍTULO
+    ====================================================== -->
 
-<?php if ($cadastroSucesso): ?>
+<section class="titulo">
+    <h1>Gerenciamento de Usuários</h1>
+
+</section>
+<br>
+    <p class="subtitulo" align="center">
+        Gerencie os usuários cadastrados no sistema.
+    </p>
 
 
-    <!-- =================================================
-         MENSAGEM DE SUCESSO
-    ================================================== -->
+    <!-- =====================================================
+         CADASTRAR USUÁRIO
+    ====================================================== -->
 
-    <main class="mensagem">
+    <div class="novo-usuario">
 
-        <div class="caixa-sucesso">
+        <a href="cadastrar_usuario.php">
+            + Cadastrar usuário
+        </a>
 
-            <div class="icone-sucesso">
-                ✓
+    </div>
+
+
+    <!-- =====================================================
+         PESQUISA + FILTRO
+    ====================================================== -->
+
+    <form
+        method="GET"
+        class="pesquisa"
+    >
+
+        <!-- PESQUISA POR NOME OU E-MAIL -->
+
+        <input
+            type="text"
+            name="pesquisa"
+            placeholder="Pesquisar por nome ou e-mail..."
+            value="<?php echo htmlspecialchars($pesquisa); ?>"
+        >
+
+
+        <!-- FILTRO POR TIPO -->
+
+        <select name="tipo">
+
+            <option value="">
+                Todos os tipos
+            </option>
+
+
+            <option
+                value="administrador"
+                <?php
+                echo ($tipoFiltro === "administrador")
+                    ? "selected"
+                    : "";
+                ?>
+            >
+                Administrador
+            </option>
+
+
+            <option
+                value="coordenador"
+                <?php
+                echo ($tipoFiltro === "coordenador")
+                    ? "selected"
+                    : "";
+                ?>
+            >
+                Coordenador
+            </option>
+
+
+            <option
+                value="professor"
+                <?php
+                echo ($tipoFiltro === "professor")
+                    ? "selected"
+                    : "";
+                ?>
+            >
+                Professor
+            </option>
+
+
+            <option
+                value="representante"
+                <?php
+                echo ($tipoFiltro === "representante")
+                    ? "selected"
+                    : "";
+                ?>
+            >
+                Representante
+            </option>
+
+        </select>
+
+
+        <!-- BOTÃO -->
+
+        <button type="submit">
+            Pesquisar
+        </button>
+
+    </form>
+
+
+    <!-- =====================================================
+         TABELA
+    ====================================================== -->
+
+    <div class="tabela-container">
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>
+                        Nome
+                    </th>
+
+                    <th>
+                        E-mail
+                    </th>
+
+                    <th>
+                        Tipo
+                    </th>
+
+                    <th>
+                        Curso/Turma
+                    </th>
+
+                    <th>
+                        Status
+                    </th>
+
+                    <th>
+                        Ações
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+
+            <!-- =================================================
+                 ADMINISTRADORES
+            ================================================== -->
+
+            <?php
+            if (
+                $tipoFiltro === ""
+                ||
+                $tipoFiltro === "administrador"
+            ):
+            ?>
+
+                <?php while ($usuario = $resultAdministrador->fetch_assoc()): ?>
+
+                    <tr>
+
+
+                        <td>
+
+                            <?php
+                            echo htmlspecialchars(
+                                $usuario["nome"]
+                            );
+                            ?>
+
+                        </td>
+
+
+                        <td>
+
+                            <?php
+                            echo htmlspecialchars(
+                                $usuario["email"]
+                            );
+                            ?>
+
+                        </td>
+
+
+                        <td>
+                            Administrador
+                        </td>
+
+
+                        <td>
+                            —
+                        </td>
+
+
+                        <td>
+
+                            <?php
+                            if ($usuario["status"] == "Ativo"):
+                            ?>
+
+                                <span class="status ativo">
+                                    Ativo
+                                </span>
+
+                            <?php else: ?>
+
+                                <span class="status bloqueado">
+                                    Bloqueado
+                                </span>
+
+                            <?php endif; ?>
+
+                        </td>
+
+
+                        <td class="acoes">
+
+
+                            <!-- EDITAR -->
+
+                            <a
+                                href="editar_usuario.php?tipo=administrador&id=<?php echo $usuario["id_administrador"]; ?>"
+                                class="editar"
+                            >
+                                Editar
+                            </a>
+
+
+                            <!-- BLOQUEAR / ATIVAR -->
+
+                            <?php
+                            if ($usuario["status"] == "Ativo"):
+                            ?>
+
+                                <a
+                                    href="acoes_usuario.php?acao=bloquear&tipo=administrador&id=<?php echo $usuario["id_administrador"]; ?>"
+                                    class="bloquear acao-confirmar"
+                                >
+                                    Bloquear
+                                </a>
+
+                            <?php else: ?>
+
+                                <a
+                                    href="acoes_usuario.php?acao=ativar&tipo=administrador&id=<?php echo $usuario["id_administrador"]; ?>"
+                                    class="ativar acao-confirmar"
+                                >
+                                    Ativar
+                                </a>
+
+                            <?php endif; ?>
+
+
+                        </td>
+
+                    </tr>
+
+                <?php endwhile; ?>
+
+            <?php endif; ?>
+
+
+            <!-- =================================================
+                 COORDENADORES
+            ================================================== -->
+
+            <?php
+            if (
+                $tipoFiltro === ""
+                ||
+                $tipoFiltro === "coordenador"
+            ):
+            ?>
+
+                <?php while ($usuario = $resultCoordenador->fetch_assoc()): ?>
+
+                    <tr>
+
+
+                        <td>
+
+                            <?php
+                            echo htmlspecialchars(
+                                $usuario["nome"]
+                            );
+                            ?>
+
+                        </td>
+
+
+                        <td>
+
+                            <?php
+                            echo htmlspecialchars(
+                                $usuario["email"]
+                            );
+                            ?>
+
+                        </td>
+
+
+                        <td>
+                            Coordenador
+                        </td>
+
+
+                        <td>
+
+                            Curso:
+
+                            <?php
+                            echo htmlspecialchars(
+                                $usuario["curso"]
+                            );
+                            ?>
+
+                        </td>
+
+
+                        <td>
+
+                            <?php
+                            if ($usuario["status"] == "Ativo"):
+                            ?>
+
+                                <span class="status ativo">
+                                    Ativo
+                                </span>
+
+                            <?php else: ?>
+
+                                <span class="status bloqueado">
+                                    Bloqueado
+                                </span>
+
+                            <?php endif; ?>
+
+                        </td>
+
+
+                        <td class="acoes">
+
+
+                            <a
+                                href="editar_usuario.php?tipo=coordenador&id=<?php echo $usuario["id_coordenador"]; ?>"
+                                class="editar"
+                            >
+                                Editar
+                            </a>
+
+
+                            <?php
+                            if ($usuario["status"] == "Ativo"):
+                            ?>
+
+                                <a
+                                    href="acoes_usuario.php?acao=bloquear&tipo=coordenador&id=<?php echo $usuario["id_coordenador"]; ?>"
+                                    class="bloquear acao-confirmar"
+                                >
+                                    Bloquear
+                                </a>
+
+                            <?php else: ?>
+
+                                <a
+                                    href="acoes_usuario.php?acao=ativar&tipo=coordenador&id=<?php echo $usuario["id_coordenador"]; ?>"
+                                    class="ativar acao-confirmar"
+                                >
+                                    Ativar
+                                </a>
+
+                            <?php endif; ?>
+
+
+                        </td>
+
+                    </tr>
+
+                <?php endwhile; ?>
+
+            <?php endif; ?>
+
+
+            <!-- =================================================
+                 PROFESSORES
+            ================================================== -->
+
+            <?php
+            if (
+                $tipoFiltro === ""
+                ||
+                $tipoFiltro === "professor"
+            ):
+            ?>
+
+                <?php while ($usuario = $resultProfessor->fetch_assoc()): ?>
+
+                    <tr>
+
+
+                        <td>
+
+                            <?php
+                            echo htmlspecialchars(
+                                $usuario["nome"]
+                            );
+                            ?>
+
+                        </td>
+
+
+                        <td>
+
+                            <?php
+                            echo htmlspecialchars(
+                                $usuario["email"]
+                            );
+                            ?>
+
+                        </td>
+
+
+                        <td>
+                            Professor
+                        </td>
+
+
+                        <td>
+                            —
+                        </td>
+
+
+                        <td>
+
+                            <?php
+                            if ($usuario["status"] == "Ativo"):
+                            ?>
+
+                                <span class="status ativo">
+                                    Ativo
+                                </span>
+
+                            <?php else: ?>
+
+                                <span class="status bloqueado">
+                                    Bloqueado
+                                </span>
+
+                            <?php endif; ?>
+
+                        </td>
+
+
+                        <td class="acoes">
+
+
+                            <a
+                                href="editar_usuario.php?tipo=professor&id=<?php echo $usuario["id_professor"]; ?>"
+                                class="editar"
+                            >
+                                Editar
+                            </a>
+
+
+                            <?php
+                            if ($usuario["status"] == "Ativo"):
+                            ?>
+
+                                <a
+                                    href="acoes_usuario.php?acao=bloquear&tipo=professor&id=<?php echo $usuario["id_professor"]; ?>"
+                                    class="bloquear acao-confirmar"
+                                >
+                                    Bloquear
+                                </a>
+
+                            <?php else: ?>
+
+                                <a
+                                    href="acoes_usuario.php?acao=ativar&tipo=professor&id=<?php echo $usuario["id_professor"]; ?>"
+                                    class="ativar acao-confirmar"
+                                >
+                                    Ativar
+                                </a>
+
+                            <?php endif; ?>
+
+
+                        </td>
+
+                    </tr>
+
+                <?php endwhile; ?>
+
+            <?php endif; ?>
+
+
+            <!-- =================================================
+                 REPRESENTANTES
+            ================================================== -->
+
+            <?php
+            if (
+                $tipoFiltro === ""
+                ||
+                $tipoFiltro === "representante"
+            ):
+            ?>
+
+                <?php while ($usuario = $resultRepresentante->fetch_assoc()): ?>
+
+                    <tr>
+
+
+                        <td>
+
+                            <?php
+                            echo htmlspecialchars(
+                                $usuario["nome"]
+                            );
+                            ?>
+
+                        </td>
+
+
+                        <td>
+
+                            <?php
+                            echo htmlspecialchars(
+                                $usuario["email"]
+                            );
+                            ?>
+
+                        </td>
+
+
+                        <td>
+                            Representante
+                        </td>
+
+
+                        <td>
+
+                            <?php
+
+                                echo htmlspecialchars($usuario["serie"]
+                                . " - "
+                                . $usuario["curso"]
+                                . " - "
+                                . (
+                                    $usuario["periodo"] == "I"
+                                        ? "Integral"
+                                        :(
+                                            $usuario["periodo"] == "N"
+                                                ? "Noturno"
+                                                : "Não informado"
+                                        )
+                                    )
+                                );
+                            ?>
+                        </td>
+
+
+                        <td>
+
+                            <?php
+                            if ($usuario["status"] == "Ativo"):
+                            ?>
+
+                                <span class="status ativo">
+                                    Ativo
+                                </span>
+
+                            <?php else: ?>
+
+                                <span class="status bloqueado">
+                                    Bloqueado
+                                </span>
+
+                            <?php endif; ?>
+
+                        </td>
+
+
+                        <td class="acoes">
+
+
+                            <a
+                                href="editar_usuario.php?tipo=representante&id=<?php echo $usuario["id_representante"]; ?>"
+                                class="editar"
+                            >
+                                Editar
+                            </a>
+
+
+                            <?php
+                            if ($usuario["status"] == "Ativo"):
+                            ?>
+
+                                <a
+                                    href="acoes_usuario.php?acao=bloquear&tipo=representante&id=<?php echo $usuario["id_representante"]; ?>"
+                                    class="bloquear acao-confirmar"
+                                >
+                                    Bloquear
+                                </a>
+
+                            <?php else: ?>
+
+                                <a
+                                    href="acoes_usuario.php?acao=ativar&tipo=representante&id=<?php echo $usuario["id_representante"]; ?>"
+                                    class="ativar acao-confirmar"
+                                >
+                                    Ativar
+                                </a>
+
+                            <?php endif; ?>
+
+
+                        </td>
+
+                    </tr>
+
+                <?php endwhile; ?>
+
+            <?php endif; ?>
+
+
+            <!-- =================================================
+                 GESTÃO
+                 
+                 Gestão NÃO possui opção no filtro.
+                 Ela aparece somente quando "Todos os tipos"
+                 estiver selecionado.
+            ================================================== -->
+
+            <?php if ($tipoFiltro === ""): ?>
+
+                <?php while ($usuario = $resultGestao->fetch_assoc()): ?>
+
+                    <tr>
+
+
+                        <td>
+
+                            <?php
+                            echo htmlspecialchars(
+                                $usuario["nome"]
+                            );
+                            ?>
+
+                        </td>
+
+
+                        <td>
+
+                            <?php
+                            echo htmlspecialchars(
+                                $usuario["email"]
+                            );
+                            ?>
+
+                        </td>
+
+
+                        <td>
+                            Gestão
+                        </td>
+
+
+                        <td>
+                            —
+                        </td>
+
+
+                        <td>
+
+                            <?php
+                            if ($usuario["status"] == "Ativo"):
+                            ?>
+
+                                <span class="status ativo">
+                                    Ativo
+                                </span>
+
+                            <?php else: ?>
+
+                                <span class="status bloqueado">
+                                    Bloqueado
+                                </span>
+
+                            <?php endif; ?>
+
+                        </td>
+
+
+                        <td class="acoes">
+
+
+                            <a
+                                href="editar_usuario.php?tipo=gestao&id=<?php echo $usuario["id_gestao"]; ?>"
+                                class="editar"
+                            >
+                                Editar
+                            </a>
+
+
+                            <?php
+                            if ($usuario["status"] == "Ativo"):
+                            ?>
+
+                                <a
+                                    href="acoes_usuario.php?acao=bloquear&tipo=gestao&id=<?php echo $usuario["id_gestao"]; ?>"
+                                    class="bloquear acao-confirmar"
+                                >
+                                    Bloquear
+                                </a>
+
+                            <?php else: ?>
+
+                                <a
+                                    href="acoes_usuario.php?acao=ativar&tipo=gestao&id=<?php echo $usuario["id_gestao"]; ?>"
+                                    class="ativar acao-confirmar"
+                                >
+                                    Ativar
+                                </a>
+
+                            <?php endif; ?>
+
+
+                        </td>
+
+                    </tr>
+
+                <?php endwhile; ?>
+
+            <?php endif; ?>
+
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+
+</main>
+
+<!-- BOTÃO VOLTAR COM BOOTSTRAP -->
+<section class="py-4">
+    <div class="container">
+        <div class="row">
+            <div class="col-sm-2 offset-sm-5 text-center">
+                <button type="button"
+                        class="btn btn-warning text-white w-100"
+                        onclick="history.back()">
+                    Voltar
+                </button>
             </div>
-
-
-            <h1>
-                Usuário cadastrado com sucesso!!!
-            </h1>
-
-
-            <p>
-                O novo usuário foi adicionado ao sistema.
-            </p>
-
-
-            <a
-                href="gerenciar_usuarios.php"
-                class="voltar">
-
-                Voltar para gerenciamento
-
-            </a>
-
         </div>
-
-    </main>
-
-
-<?php else: ?>
-
-
-    <!-- =================================================
-         FORMULÁRIO
-    ================================================== -->
-
-    <section class="titulo">
-
-        <h1>Cadastrar de Usuários</h1>
-
-    </section>
-    <br>
-
-
-        <p class="subtitulo">
-
-            Preencha os dados para cadastrar um novo usuário.
-
-        </p>
-        
-    <main class="container">
-
-
-        <?php if (!empty($erro)): ?>
-
-            <div class="erro">
-
-                <?php echo htmlspecialchars($erro); ?>
-
-            </div>
-
-        <?php endif; ?>
-
-
-
-        <form
-            method="POST"
-            class="formulario">
-
-
-            <!-- NOME -->
-
-            <label for="nome">
-                Nome
-            </label>
-
-            <input
-                type="text"
-                id="nome"
-                name="nome"
-                required
-            >
-
-
-
-            <!-- E-MAIL -->
-
-            <label for="email">
-                E-mail
-            </label>
-
-            <input
-                type="email"
-                id="email"
-                name="email"
-                required
-            >
-
-
-
-            <!-- SENHA -->
-
-            <label for="senha">
-                Senha
-            </label>
-
-            <input
-                type="password"
-                id="senha"
-                name="senha"
-                required
-            >
-
-
-
-            <!-- TIPO -->
-
-            <label for="tipo">
-                Tipo de usuário
-            </label>
-
-            <select
-                id="tipo"
-                name="tipo"
-                required
-                onchange="mostrarCampos()"
-            >
-
-                <option value="">
-                    Selecione o tipo
-                </option>
-
-                <option value="administrador">
-                    Administrador
-                </option>
-
-                <option value="coordenador">
-                    Coordenador
-                </option>
-
-                <option value="professor">
-                    Professor
-                </option>
-
-                <option value="representante">
-                    Representante
-                </option>
-
-                <option value="gestao">
-                    Gestão
-                </option>
-
-            </select>
-
-
-
-            <!-- =================================================
-                 CURSO DO COORDENADOR
-            ================================================== -->
-
-            <div
-                id="campoCurso"
-                class="campo-extra">
-
-                <label for="curso">
-                    Curso
-                </label>
-
-                <select
-                    name="curso"
-                    id="curso"
-                >
-
-                    <option value="">
-                        Selecione o curso
-                    </option>
-
-                    <option value="DS">
-                        Desenvolvimento de Sistemas
-                    </option>
-
-                    <option value="ADM">
-                        Administração
-                    </option>
-
-                    <option value="AUT">
-                        Automação
-                    </option>
-
-                    <option value="RH">
-                        Recursos Humanos
-                    </option>
-
-                </select>
-
-            </div>
-
-
-
-            <!-- =================================================
-                 COORDENADOR DO PROFESSOR
-            ================================================== -->
-
-            <div
-                id="campoCoordenador"
-                class="campo-extra">
-
-                <label for="id_coordenador">
-
-                    Coordenador responsável
-
-                </label>
-
-                <select
-                    name="id_coordenador"
-                    id="id_coordenador"
-                >
-
-                    <option value="">
-                        Selecione o coordenador
-                    </option>
-
-
-                    <?php while ($coordenador = $coordenadores->fetch_assoc()): ?>
-
-                        <option
-                            value="<?php echo $coordenador["id_coordenador"]; ?>">
-
-                            <?php
-
-                            echo htmlspecialchars(
-                                $coordenador["nome"]
-                            );
-
-                            echo " - ";
-
-                            echo htmlspecialchars(
-                                $coordenador["curso"]
-                            );
-
-                            ?>
-
-                        </option>
-
-                    <?php endwhile; ?>
-
-                </select>
-
-            </div>
-
-
-
-            <!-- =================================================
-                 TURMA DO REPRESENTANTE
-            ================================================== -->
-
-            <div
-                id="campoTurma"
-                class="campo-extra">
-
-                <label for="id_turma">
-
-                    Turma
-
-                </label>
-
-                <select
-                    name="id_turma"
-                    id="id_turma"
-                >
-
-                    <option value="">
-                        Selecione a turma
-                    </option>
-
-
-                    <?php while ($turma = $turmas->fetch_assoc()): ?>
-
-                        <option value="<?php echo $turma["id_turma"]; ?>">
-                            <?php
-                                echo htmlspecialchars($turma["serie"]);
-                                echo " - ";
-                                echo htmlspecialchars($turma["curso"]);
-                                echo " - ";
-                                
-                                if ($turma["periodo"] == "I") {
-                                    echo "Integral";
-                                    
-                                } elseif ($turma["periodo"] == "N") {
-                                    echo "Noturno";
-
-                                } else {
-                                    echo "Não informado";
-                                }
-                            ?>
-                        </option>
-
-                    <?php endwhile; ?>
-
-                </select>
-
-            </div>
-
-
-
-            <!-- =================================================
-                 BOTÕES
-            ================================================== -->
-
-            <div class="botoes">
-
-
-                <button
-                    type="button"
-                    class="cancelar"
-                    onclick="window.location.href='gerenciar_usuarios.php';">
-
-                    Cancelar
-
-                </button>
-
-
-                <button
-                    type="submit"
-                    class="cadastrar">
-
-                    Cadastrar usuário
-
-                </button>
-
-
-            </div>
-
-
-        </form>
-
-
-    </main>
-
-
+    </div>
+</section>
+
+<!--MENSAGEM DE CONFIRMAÇÃO -->
+<div id="modalConfirmacao" class="modal-overlay">
+    <div class="modal-caixa">
+        <div class="modal-icone">!</div>
+        <h2>Confirmar ação</h2>
+        <p id="textoConfirmacao"></p>
+        <div class="modal-botoes">
+            <button type="button" id="btnCancelar" class="btn-cancelar">Cancelar</button>
+            <button type="button" id="btnConfirmar" class="btn-confirmar">Bloquear</button>
+        </div>
+    </div>
+</div>
+
+<?php if (isset($_GET["mensagem"]) && in_array($_GET["mensagem"], ["bloqueado", "ativado"], true)): ?>
+    <div id="popupSucesso" class="popup-sucesso">
+        <span class="check">✓</span>
+        <?php echo $_GET["mensagem"] === "bloqueado" ? "Usuário bloqueado com sucesso!" : "Usuário ativado com sucesso!"; ?>
+    </div>
 <?php endif; ?>
 
-
-
 <script>
+document.addEventListener("DOMContentLoaded", function () {
+    const modal = document.getElementById("modalConfirmacao");
+    const texto = document.getElementById("textoConfirmacao");
+    const btnConfirmar = document.getElementById("btnConfirmar");
+    const btnCancelar = document.getElementById("btnCancelar");
+    let linkConfirmado = null;
 
-function mostrarCampos() {
+    document.querySelectorAll(".acao-confirmar").forEach(function (link) {
+        link.addEventListener("click", function (event) {
+            event.preventDefault();
+            linkConfirmado = link;
+            const ativar = link.classList.contains("ativar");
+            texto.textContent = ativar
+                ? "Tem certeza que deseja ativar este usuário?"
+                : "Tem certeza que deseja bloquear este usuário?";
+            btnConfirmar.textContent = ativar ? "Ativar" : "Bloquear";
+            btnConfirmar.classList.toggle("ativar", ativar);
+            modal.classList.add("ativo");
+        });
+    });
 
-    const tipo =
-        document.getElementById("tipo").value;
+    btnCancelar.addEventListener("click", function () {
+        modal.classList.remove("ativo");
+        linkConfirmado = null;
+    });
 
+    btnConfirmar.addEventListener("click", function () {
+        if (linkConfirmado) {
+            window.location.href = linkConfirmado.href;
+        }
+    });
 
-    const campoCurso =
-        document.getElementById("campoCurso");
+    modal.addEventListener("click", function (event) {
+        if (event.target === modal) {
+            modal.classList.remove("ativo");
+            linkConfirmado = null;
+        }
+    });
 
-    const campoCoordenador =
-        document.getElementById("campoCoordenador");
+    const popup = document.getElementById("popupSucesso");
+    if (popup) {
+        setTimeout(function () {
+            popup.style.opacity = "0";
+            popup.style.transition = "opacity .3s";
+            setTimeout(function () { popup.remove(); }, 300);
+        }, 3000);
 
-    const campoTurma =
-        document.getElementById("campoTurma");
-
-
-    // Esconder todos os campos
-
-    campoCurso.style.display = "none";
-
-    campoCoordenador.style.display = "none";
-
-    campoTurma.style.display = "none";
-
-
-    // =================================================
-    // COORDENADOR
-    // =================================================
-
-    if (tipo == "coordenador") {
-
-        campoCurso.style.display = "block";
-
+        if (window.history.replaceState) {
+            const url = new URL(window.location.href);
+            url.searchParams.delete("mensagem");
+            window.history.replaceState({}, document.title, url.pathname + (url.search ? url.search : ""));
+        }
     }
-
-
-    // =================================================
-    // PROFESSOR
-    // =================================================
-
-    else if (tipo == "professor") {
-
-        campoCoordenador.style.display = "block";
-
-    }
-
-
-    // =================================================
-    // REPRESENTANTE
-    // =================================================
-
-    else if (tipo == "representante") {
-
-        campoTurma.style.display = "block";
-
-    }
-
-}
-
+});
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
 
 </body>
 
