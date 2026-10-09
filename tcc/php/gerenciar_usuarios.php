@@ -1,13 +1,13 @@
 <?php
 // ==========================================================
-// 1. INICIA A SESSÃO
+// INICIA A SESSÃO
 // ==========================================================
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 // ==========================================================
-// 2. VERIFICA SE O USUÁRIO ESTÁ LOGADO
+// VERIFICA SE O USUÁRIO ESTÁ LOGADO
 // ==========================================================
 if (!isset($_SESSION['usuario_id'])) {
     header("Location: login.php");
@@ -15,7 +15,7 @@ if (!isset($_SESSION['usuario_id'])) {
 }
 
 // ==========================================================
-// 3. VERIFICA O TIPO DE USUÁRIO
+// VERIFICA O TIPO DE USUÁRIO
 // ==========================================================
 $tipoPermitido = 'administrador';
 
@@ -25,7 +25,7 @@ if (!isset($_SESSION['usuario_tipo']) || $_SESSION['usuario_tipo'] !== $tipoPerm
 }
 
 // ==========================================================
-// 4. LOGOUT
+// LOGOUT
 // ==========================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
     session_unset();
@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
 }
 
 // ==========================================================
-// 5. CABEÇALHOS ANTI-CACHE
+// CABEÇALHOS ANTI-CACHE
 // ==========================================================
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
@@ -43,7 +43,7 @@ header("Pragma: no-cache");
 header("Expires: 0");
 
 // ==========================================================
-// 6. CONEXÃO COM O BANCO
+// CONEXÃO COM O BANCO
 // ==========================================================
 require_once __DIR__ . "/conexao.php";
 
