@@ -1,17 +1,52 @@
 <?php
-
-$host = "localhost";
-$usuario = "root";
-$senha = "";
-$banco = "MODELO_TCC";
-
-$conn = new mysqli($host, $usuario, $senha, $banco);
-
-if ($conn->connect_error) {
-    die("Erro na conexão: " . $conn->connect_error);
+// ==========================================================
+// 1. INICIA A SESSÃO
+// ==========================================================
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
-$conn->set_charset("utf8");
+// ==========================================================
+// 2. VERIFICA SE O USUÁRIO ESTÁ LOGADO
+// ==========================================================
+if (!isset($_SESSION['usuario_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
+// ==========================================================
+// 3. VERIFICA O TIPO DE USUÁRIO
+// ==========================================================
+$tipoPermitido = 'administrador';
+
+if (!isset($_SESSION['usuario_tipo']) || $_SESSION['usuario_tipo'] !== $tipoPermitido) {
+    header("Location: login.php");
+    exit();
+}
+
+// ==========================================================
+// 4. LOGOUT
+// ==========================================================
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
+    session_unset();
+    session_destroy();
+    header("Location: login.php");
+    exit();
+}
+
+// ==========================================================
+// 5. CABEÇALHOS ANTI-CACHE
+// ==========================================================
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+header("Expires: 0");
+
+// ==========================================================
+// 6. CONEXÃO COM O BANCO
+// ==========================================================
+require_once __DIR__ . "/conexao.php";
+
 
 // =====================================================
 // PESQUISA
@@ -526,7 +561,21 @@ $resultRepresentante = $stmt->get_result();
 
 </main>
 
+<!-- BOTÃO VOLTAR COM BOOTSTRAP -->
+    <section class="my-3">
+        <div class="container">
+            <div class="row">
+                <div class="col-sm-2 offset-sm-5 text-center">
+                    <button type="button" class="btn btn-warning text-white w-100"
+                            onclick="history.back()">
+                        Voltar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
 
+<!-- MENSAGEM DE CONFIRMAÇÃO -->
 <div id="modalConfirmacao" class="modal-overlay">
     <div class="modal-caixa">
         <div class="modal-icone">!</div>
