@@ -1,0 +1,314 @@
+﻿<?php
+session_start();
+
+if (!isset($_SESSION['usuario_id'])) {
+    header("Location: ../index.php");
+    exit();
+}
+
+$tiposPermitidos = [
+    'professor',
+    'administrador',
+    'coordenador',
+    'gestao'
+];
+
+if (!in_array($_SESSION['usuario_tipo'], $tiposPermitidos)) {
+    header("Location: ../index.php");
+    exit();
+}
+
+require_once dirname(__DIR__) . "/conexao.php";
+
+$usuario_id = $_SESSION['usuario_id'];
+$usuario_tipo = $_SESSION['usuario_tipo'];
+
+$agendamentos = [];
+
+/*
+|--------------------------------------------------------------------------
+| BUSCA OS AGENDAMENTOS DO USUÁRIO
+|--------------------------------------------------------------------------
+*/
+
+$sql = "
+    SELECT
+        a.id_agendamentos,
+        a.nome_prof,
+        a.descr,
+        a.data_agendamento,
+        a.horario,
+        a.status,
+        a.id_ambientes,
+        amb.nome AS nome_ambiente,
+        amb.tipo AS tipo_ambiente
+    FROM agendamentos a
+
+    INNER JOIN ambientes amb
+        ON a.id_ambientes = amb.id_ambientes
+
+    WHERE a.solicitante_id = ?
+    AND a.solicitante_tipo = ?
+
+    ORDER BY
+        a.data_agendamento DESC,
+        a.id_agendamentos DESC
+";
+
+$stmt = mysqli_prepare($conexao, $sql);
+
+if ($stmt) {
+
+    mysqli_stmt_bind_param(
+        $stmt,
+        "is",
+        $usuario_id,
+        $usuario_tipo
+    );
+
+    mysqli_stmt_execute($stmt);
+
+    $resultado = mysqli_stmt_get_result($stmt);
+
+    while ($linha = mysqli_fetch_assoc($resultado)) {
+        $agendamentos[] = $linha;
+    }
+
+    mysqli_stmt_close($stmt);
+}
+
+?>
+
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+<title>Meus Agendamentos</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+
+
+<link
+    rel="stylesheet"
+    href="../css/meus_agendamentos.css">
+
+<link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+</head>
+
+<body>
+
+<header>
+
+    <div class="logo">
+        <img src="../logo.png">
+    </div>
+
+    <nav>
+        <a href="">Home</a>
+        <a href="#" class="has-submenu">
+            Cursos
+        </a>
+        <a href="#" class="has-submenu">
+            A Etec
+        </a>
+        <a href="#" class="has-submenu">
+            Equipe Etec
+        </a>
+        <li>
+            <a
+                href="agendamento.php"
+                class="has-submenu">
+                Agendamento
+            </a>
+        </li>
+        <a href="#" class="has-submenu">Notícias</a>
+        <a href="">Empregos & Estágios</a>
+        <a href="">Parceiros</a>
+        <a href=""> TCC</a>
+
+    </nav>
+</header>
+
+
+
+
+    <div class="titulo">
+
+        <h1>
+            Meus Agendamentos
+        </h1>
+    </div>
+    <br><br>
+<main class="container">
+
+    <?php if (empty($agendamentos)): ?>
+
+        <div class="sem-agendamentos">
+
+            <i class="fa-regular fa-calendar-xmark"></i>
+
+            <h2>
+                Nenhum agendamento encontrado
+            </h2>
+
+            <p>
+                Você ainda não possui solicitações de agendamento.
+            </p>
+
+            <a href="agendamento.php">
+                Fazer um agendamento
+            </a>
+
+        </div>
+        <br><br>
+
+    <?php else: ?>
+
+
+        <div class="lista-agendamentos">
+
+            <?php foreach ($agendamentos as $agendamento): ?>
+
+                <?php
+
+                /*
+                 * Formata a data
+                 */
+
+                $data = date(
+                    'd/m/Y',
+                    strtotime($agendamento['data_agendamento'])
+                );
+
+
+                /*
+                 * Monta o nome do ambiente
+                 */
+
+                if ($agendamento['tipo_ambiente'] === 'Auditório') {
+
+                    $ambiente = $agendamento['nome_ambiente'];
+
+                } else {
+
+                    $ambiente =
+                        $agendamento['nome_ambiente']
+                        . " - "
+                        . $agendamento['tipo_ambiente'];
+                }
+
+
+                /*
+                 * Status
+                 */
+
+                $status = $agendamento['status'];
+
+                $classeStatus = '';
+
+                if ($status === 'Aprovada') {
+                    $classeStatus = 'aprovada';
+                } elseif ($status === 'Recusada') {
+                    $classeStatus = 'recusada';
+                } else {
+                    $classeStatus = 'pendente';
+                }
+
+                ?>
+
+                <div class="card-agendamento">
+
+                    <div class="informacoes">
+
+                        <h2>
+                            <?= htmlspecialchars($ambiente) ?>
+                            -
+                            Solicitação
+                            <?= htmlspecialchars($status) ?>
+                        </h2>
+
+                        <p class="data-horario">
+
+                            <i class="fa-regular fa-clock"></i>
+
+                            <?= htmlspecialchars($agendamento['horario']) ?>
+
+                            -
+
+                            <?= htmlspecialchars($data) ?>
+
+                        </p>
+
+                        <p class="descricao">
+
+                            <strong>Descrição:</strong>
+
+                            <?= htmlspecialchars($agendamento['descr']) ?>
+
+                        </p>
+
+                    </div>
+
+
+                    <div class="status <?= $classeStatus ?>">
+
+                        <?php if ($status === 'Aprovada'): ?>
+
+                            <i class="fa-solid fa-circle-check"></i>
+
+                        <?php elseif ($status === 'Recusada'): ?>
+
+                            <i class="fa-solid fa-circle-xmark"></i>
+
+                        <?php else: ?>
+
+                            <i class="fa-solid fa-clock"></i>
+
+                        <?php endif; ?>
+
+                        <?= htmlspecialchars($status) ?>
+
+                    </div>
+
+                </div>
+
+            <?php endforeach; ?>
+
+        </div>
+
+    <?php endif; ?>
+
+</main>
+
+<br><br>
+
+<section>
+      <div class="container">
+        <div class="row">
+          <div class="col-sm-2 offset-sm-5 text-center">
+            <button class="btn btn-warning text-white btn-block" onclick="voltar()">Voltar</button>
+            <script>
+              function voltar(){
+                history.back();
+              }
+            </script>
+          </div>
+        </div>
+      </div>
+    </section><!-- End About Section -->
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+</body>
+</html>
