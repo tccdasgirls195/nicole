@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // Inicia a sessão no PHP para armazenar o usuário logado
 session_start();
 
@@ -70,39 +70,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // Percorre cada tabela de perfil para tentar encontrar o usuário
             foreach ($tabelas as $tabela => $id_coluna) {
 
-                // Prepara a instrução SQL para prevenir SQL Injection
-                $sql = "SELECT $id_coluna, email, senha, status FROM $tabela WHERE LOWER(TRIM(email)) = LOWER(TRIM(?))";
+                // 1. Tenta buscar se o usuário está ATIVO
+                $sql = "SELECT $id_coluna, email, senha, status FROM $tabela WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) AND status = 'Ativo'";
                 $stmt = mysqli_prepare($conexao, $sql);
 
                 if ($stmt) {
-                    // Vincula os parâmetros inseridos pelo usuário ("s" = string)
                     mysqli_stmt_bind_param($stmt, "s", $email);
-                    
-                    // Executa a consulta no banco de dados
                     mysqli_stmt_execute($stmt);
-                    
-                    // Obtém o resultado da busca
                     $resultado = mysqli_stmt_get_result($stmt);
 
-                    // Se encontrou exatamente 1 registro
+                    // Se encontrou o usuário ATIVO
                     if (mysqli_num_rows($resultado) === 1) {
                         $usuario = mysqli_fetch_assoc($resultado);
 
-                        // Verifica se o usuário está ativo antes de permitir o acesso
-                        if ($usuario['status'] !== 'Ativo') {
-                            $erro = "Seu acesso está bloqueado. Você não pode acessar o sistema enquanto sua conta estiver bloqueada.";
-                            $usuarioEncontrado = true;
-                            mysqli_stmt_close($stmt);
-                            break;
-                        }
-
-                        // a partir daqui, verifica se a senha fornecida corresponde à senha armazenada no banco de dados
-                        // mary - dia 12 d0 8 2026 
+                        // Verifica se a senha fornecida corresponde à senha armazenada
                         if (password_verify($senha, $usuario['senha'])) {
 
                             $usuarioEncontrado = true;
 
-                            // 2.1 SUCESSO: Limpa a tabela de tentativas falhas
+                            // Limpa a tabela de tentativas falhas
                             $sql_del = "DELETE FROM tentativas_login WHERE ip = ? AND LOWER(TRIM(email)) = LOWER(TRIM(?))";
                             $stmt_del = mysqli_prepare($conexao, $sql_del);
                             if ($stmt_del) {
@@ -116,15 +102,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             $_SESSION['usuario_email'] = $usuario['email'];
                             $_SESSION['usuario_tipo']  = $tabela;
 
-                            // ==========================================
-                            // REGISTRA O LOGIN BEM-SUCEDIDO
-                            // ==========================================
+                            // Registra o login bem-sucedido
                             $pagina = $_SERVER['REQUEST_URI'];
-
                             $sqlLog = "INSERT INTO registros_acesso (usuario_id, usuario_tipo, ip, pagina) VALUES (?, ?, ?, ?)";
                             $stmtLog = mysqli_prepare($conexao, $sqlLog);
 
-                            // o if abaixo garante que a instrução preparada foi criada com sucesso antes de tentar vincular os parâmetros
                             if ($stmtLog) {
                                 mysqli_stmt_bind_param($stmtLog, "isss", $usuario[$id_coluna], $tabela, $ip, $pagina);
                                 mysqli_stmt_execute($stmtLog);
@@ -133,28 +115,43 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                             mysqli_stmt_close($stmt);
 
-                            // ==========================================
-                            // REDIRECIONA PARA A PÁGINA ESPECÍFICA DO PERFIL
-                            // ==========================================
+                            // Redireciona para a página específica do perfil
                             $destinos = [
-                                'representante' => '../calendario/calendario.php',   // Representante vai para o Calendário
-                                'administrador' => '../opcoes.html',  // Altere se o admin tiver outra página
-                                'coordenador'   => '../agendamento/agendamento.php',  // Altere se o coordenador tiver outra página
-                                'professor'     => '../agendamento/agendamento.php',  // Altere se o professor tiver outra página
-                                'gestao'        => '../agendamento/solicitacoes_gestao.php'   // Altere se a gestão tiver outra página
+                                'representante' => '../calendario/calendario.php',
+                                'administrador' => '../opcoes.html',
+                                'coordenador'   => '../agendamento/agendamento.php',
+                                'professor'     => '../agendamento/agendamento.php',
+                                'gestao'        => '../agendamento/solicitacoes_gestao.php'
                             ];
 
-                            // Pega a página configurada para o tipo de usuário ou redireciona para o agendamento por padrão
                             $paginaDestino = $destinos[$tabela] ?? '../agendamento/agendamento.php';
 
                             header("Location: " . $paginaDestino);
                             exit();
                         }
+                    } else {
+                        // Se não encontrou ativo, verifica se o usuário existe mas está BLOQUEADO
+                        $sqlBloqCheck = "SELECT status FROM $tabela WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1";
+                        $stmtB = mysqli_prepare($conexao, $sqlBloqCheck);
+                        if ($stmtB) {
+                            mysqli_stmt_bind_param($stmtB, "s", $email);
+                            mysqli_stmt_execute($stmtB);
+                            $resB = mysqli_stmt_get_result($stmtB);
+                            if ($rowB = mysqli_fetch_assoc($resB)) {
+                                if (isset($rowB['status']) && $rowB['status'] === 'Bloqueado') {
+                                    $erro = "Sua conta está bloqueada. Você não pode acessar o sistema.";
+                                    $usuarioEncontrado = true; // Impede que caia no erro genérico de senha incorreta
+                                }
+                            }
+                            mysqli_stmt_close($stmtB);
+                        }
                     }
-                    // acaba a modificação mary - dia 12 d0 8 2026
 
-                    // Fecha a instrução preparada
                     mysqli_stmt_close($stmt);
+                }
+
+                if ($usuarioEncontrado) {
+                    break;
                 }
             }
 
@@ -177,7 +174,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $novas_tentativas = $registro['tentativas'] + 1;
 
                     if ($novas_tentativas >= $max_tentativas) {
-                        // Atingiu o limite: Bloqueia por X minutos
                         $bloqueio = date("Y-m-d H:i:s", strtotime("+{$tempo_bloqueio_minutos} minutes"));
                         $sql_up = "UPDATE tentativas_login SET tentativas = ?, ultimo_erro = NOW(), bloqueado_ate = ? WHERE ip = ? AND LOWER(TRIM(email)) = LOWER(TRIM(?))";
                         $stmt_up = mysqli_prepare($conexao, $sql_up);
@@ -187,7 +183,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                         $erro = "Limite de tentativas excedido! Sua conta foi bloqueada por {$tempo_bloqueio_minutos} minutos.";
                     } else {
-                        // Apenas atualiza a contagem
                         $sql_up = "UPDATE tentativas_login SET tentativas = ?, ultimo_erro = NOW() WHERE ip = ? AND LOWER(TRIM(email)) = LOWER(TRIM(?))";
                         $stmt_up = mysqli_prepare($conexao, $sql_up);
                         mysqli_stmt_bind_param($stmt_up, "iss", $novas_tentativas, $ip, $email);
@@ -214,7 +209,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <title>Login</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    
     <link rel="stylesheet" href="../css/login.css">
 </head>
 <body>
@@ -241,92 +235,57 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     </div>
                 </div>
 
-                <!-- Luara -> olho de senha!-->
-       <div class="campo">
-    <label for="senha">Senha:</label>
-
-    <div class="input-com-icone senha-container">
-
-        <input 
-            type="password" 
-            id="senha" 
-            name="senha" 
-            placeholder="Digite sua senha" 
-            required
-        >
-
-        <i 
-            class="fa-solid fa-eye olho-senha" 
-            id="mostrarSenha">
-        </i>
-
-    </div>
-</div>
-<!-- acabou!-->
+                <div class="campo">
+                    <label for="senha">Senha:</label>
+                    <div class="input-com-icone senha-container">
+                        <input type="password" id="senha" name="senha" placeholder="Digite sua senha" required>
+                        <i class="fa-solid fa-eye olho-senha" id="mostrarSenha"></i>
+                    </div>
+                </div>
 
                 <button type="submit" class="btn-entrar">
                     Entrar <i class="fa-solid fa-right-to-bracket"></i>
                 </button>
-
-        <!--LUARA: ALTERAÇÕES RECUPERAR SENHA  !-->
     
-        <div align = center>
-            <br>
-                <a href="../recuperar/esqueci_senha.php" class="esqueci-senha">
-    Esqueci minha senha
-</a>
-            </div>
-<!--ACABOU ALTERAÇÕES LUARA  !-->
+                <div align="center">
+                    <br>
+                    <a href="../recuperar/esqueci_senha.php" class="esqueci-senha">Esqueci minha senha</a>
+                </div>
 
             </form>
 
         </div>
     </main>
 
-    <!-- Maria A. - Alterações: não aparecer a senha e tudo mais ao voltar !-->
     <script>
     const senha = document.getElementById("senha");
     const mostrarSenha = document.getElementById("mostrarSenha");
 
     // Mostrar / esconder senha
     mostrarSenha.addEventListener("click", function () {
-
         if (senha.type === "password") {
-
             senha.type = "text";
             mostrarSenha.classList.remove("fa-eye");
             mostrarSenha.classList.add("fa-eye-slash");
-
         } else {
-
             senha.type = "password";
             mostrarSenha.classList.remove("fa-eye-slash");
             mostrarSenha.classList.add("fa-eye");
-
         }
-
     });
-
 
     // Limpa os campos ao enviar o formulário
     document.querySelector("form").addEventListener("submit", function() {
-
         if (window.history.replaceState) {
-            window.history.replaceState(
-                null,
-                null,
-                window.location.href
-            );
+            window.history.replaceState(null, null, window.location.href);
         }
 
         setTimeout(function() {
             document.getElementById("email").value = "";
             document.getElementById("senha").value = "";
         }, 10);
-
     });
-</script>
-<!-- Maria A. Câmbio desligo !-->
+    </script>
 
 </body>
 </html>
