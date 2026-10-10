@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // ==========================================================
 // 1. INICIA A SESSÃO
 // ==========================================================
@@ -14,8 +14,6 @@ if (!isset($_SESSION['usuario_id'])) {
 
 // ==========================================================
 // 3. VERIFICA O TIPO DE USUÁRIO
-// Podem acessar o agendamento:
-// professor, administrador, coordenador e gestão
 // ==========================================================
 $tiposPermitidos = [
     'professor',
@@ -33,11 +31,9 @@ if (!in_array($_SESSION['usuario_tipo'], $tiposPermitidos)) {
 // 4. LOGOUT
 // ==========================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
-
     session_unset();
     session_destroy();
-
-    header("Location: login.php");
+    header("Location: ../login/login.php");
     exit();
 }
 
@@ -54,11 +50,7 @@ header("Expires: 0");
 // ==========================================================
 require_once dirname(__DIR__) . "/conexao.php";
 
-// ==========================================================
-// MENSAGEM DE SUCESSO APÓS O AGENDAMENTO
-// ==========================================================
 $mensagem = "";
-
 if (isset($_GET['sucesso']) && $_GET['sucesso'] == '1') {
     $mensagem = "Agendamento enviado com sucesso!";
 }
@@ -67,62 +59,36 @@ $erro = "";
 $ocupados = [];
 $ambientesBloqueados = [];
 
-// ==========================================================
-// 7. DESCOBRE QUEM ESTÁ LOGADO
-// ==========================================================
 $usuario_id = $_SESSION['usuario_id'];
 $usuario_tipo = $_SESSION['usuario_tipo'];
 
 // ==========================================================
 // 8. BUSCA O NOME DO USUÁRIO LOGADO
 // ==========================================================
-
 $nome_usuario = "";
 
 $tabelasUsuarios = [
-    'professor' => [
-        'tabela' => 'professor',
-        'id' => 'id_professor'
-    ],
-    'coordenador' => [
-        'tabela' => 'coordenador',
-        'id' => 'id_coordenador'
-    ],
-    'administrador' => [
-        'tabela' => 'administrador',
-        'id' => 'id_administrador'
-    ],
-    'gestao' => [
-        'tabela' => 'gestao',
-        'id' => 'id_gestao'
-    ]
+    'professor' => ['tabela' => 'professor', 'id' => 'id_professor'],
+    'coordenador' => ['tabela' => 'coordenador', 'id' => 'id_coordenador'],
+    'administrador' => ['tabela' => 'administrador', 'id' => 'id_administrador'],
+    'gestao' => ['tabela' => 'gestao', 'id' => 'id_gestao']
 ];
 
 if (isset($tabelasUsuarios[$usuario_tipo])) {
-
     $tabela = $tabelasUsuarios[$usuario_tipo]['tabela'];
     $colunaId = $tabelasUsuarios[$usuario_tipo]['id'];
 
     $sqlUsuario = "SELECT nome FROM $tabela WHERE $colunaId = ?";
-
     $stmtUsuario = mysqli_prepare($conexao, $sqlUsuario);
 
     if ($stmtUsuario) {
-
-        mysqli_stmt_bind_param(
-            $stmtUsuario,
-            "i",
-            $usuario_id
-        );
-
+        mysqli_stmt_bind_param($stmtUsuario, "i", $usuario_id);
         mysqli_stmt_execute($stmtUsuario);
-
         $resultadoUsuario = mysqli_stmt_get_result($stmtUsuario);
 
         if ($linhaUsuario = mysqli_fetch_assoc($resultadoUsuario)) {
             $nome_usuario = $linhaUsuario['nome'];
         }
-
         mysqli_stmt_close($stmtUsuario);
     }
 }
@@ -131,34 +97,18 @@ if (isset($tabelasUsuarios[$usuario_tipo])) {
 // 9. BUSCA O ID DA GESTÃO
 // ==========================================================
 $id_gestao = null;
-
-$sqlGestao = "
-    SELECT id_gestao
-    FROM gestao
-    WHERE LOWER(TRIM(email)) = LOWER(TRIM(?))
-    LIMIT 1
-";
-
+$sqlGestao = "SELECT id_gestao FROM gestao WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1";
 $emailGestao = "gestao@email.com";
-
 $stmtGestao = mysqli_prepare($conexao, $sqlGestao);
 
 if ($stmtGestao) {
-
-    mysqli_stmt_bind_param(
-        $stmtGestao,
-        "s",
-        $emailGestao
-    );
-
+    mysqli_stmt_bind_param($stmtGestao, "s", $emailGestao);
     mysqli_stmt_execute($stmtGestao);
-
     $resultadoGestao = mysqli_stmt_get_result($stmtGestao);
 
     if ($linhaGestao = mysqli_fetch_assoc($resultadoGestao)) {
         $id_gestao = $linhaGestao['id_gestao'];
     }
-
     mysqli_stmt_close($stmtGestao);
 }
 
@@ -175,26 +125,13 @@ if ($resBloq) {
 // ==========================================================
 // 11. PROCESSA O FORMULÁRIO DE AGENDAMENTO
 // ==========================================================
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_agendamento'])) {
 
-    $id_ambientes = isset($_POST['id_ambientes'])
-        ? intval($_POST['id_ambientes'])
-        : 0;
+    $id_ambientes = isset($_POST['id_ambientes']) ? intval($_POST['id_ambientes']) : 0;
+    $data_agendamento = isset($_POST['data_agendamento']) ? trim($_POST['data_agendamento']) : "";
+    $horario = isset($_POST['horario']) ? trim($_POST['horario']) : "";
+    $descr = isset($_POST['descr']) ? trim($_POST['descr']) : "";
 
-    $data_agendamento = isset($_POST['data_agendamento'])
-        ? trim($_POST['data_agendamento'])
-        : "";
-
-    $horario = isset($_POST['horario'])
-        ? trim($_POST['horario'])
-        : "";
-
-    $descr = isset($_POST['descr'])
-        ? trim($_POST['descr'])
-        : "";
-
-    // Validações
     if ($id_ambientes <= 0) {
         $erro = "Selecione um laboratório.";
     } elseif (in_array($id_ambientes, $ambientesBloqueados)) {
@@ -211,91 +148,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_agendamento'])
         $erro = "Não foi possível identificar o usuário logado.";
     } else {
 
-        // Verifica se o laboratório já está ocupado no horário
-        $sqlVerifica = "
-            SELECT id_agendamentos
-            FROM agendamentos
-            WHERE id_ambientes = ?
-            AND data_agendamento = ?
-            AND horario = ?
-            LIMIT 1
-        ";
-
-        $stmtVerifica = mysqli_prepare(
-            $conexao,
-            $sqlVerifica
-        );
+        $sqlVerifica = "SELECT id_agendamentos FROM agendamentos WHERE id_ambientes = ? AND data_agendamento = ? AND horario = ? LIMIT 1";
+        $stmtVerifica = mysqli_prepare($conexao, $sqlVerifica);
 
         if ($stmtVerifica) {
-
-            mysqli_stmt_bind_param(
-                $stmtVerifica,
-                "iss",
-                $id_ambientes,
-                $data_agendamento,
-                $horario
-            );
-
+            mysqli_stmt_bind_param($stmtVerifica, "iss", $id_ambientes, $data_agendamento, $horario);
             mysqli_stmt_execute($stmtVerifica);
-
-            $resultadoVerifica = mysqli_stmt_get_result(
-                $stmtVerifica
-            );
+            $resultadoVerifica = mysqli_stmt_get_result($stmtVerifica);
 
             if (mysqli_num_rows($resultadoVerifica) > 0) {
                 $erro = "Este laboratório já está ocupado nessa data e horário.";
             }
-
             mysqli_stmt_close($stmtVerifica);
-
         } else {
             $erro = "Erro ao verificar disponibilidade.";
         }
 
-        // Salva o agendamento se estiver livre
         if (empty($erro)) {
+            $id_professor = ($usuario_tipo === 'professor') ? $usuario_id : null;
 
-            $id_professor = null;
-            if ($usuario_tipo === 'professor') {
-                $id_professor = $usuario_id;
-            }
-
-            $sqlInsert = "
-                INSERT INTO agendamentos
-                (
-                    nome_prof,
-                    descr,
-                    data_agendamento,
-                    id_gestao,
-                    id_professor,
-                    id_ambientes,
-                    horario,
-                    solicitante_id,
-                    solicitante_tipo
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ";
-
-            $stmtInsert = mysqli_prepare(
-                $conexao,
-                $sqlInsert
-            );
+            $sqlInsert = "INSERT INTO agendamentos (nome_prof, descr, data_agendamento, id_gestao, id_professor, id_ambientes, horario, solicitante_id, solicitante_tipo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            $stmtInsert = mysqli_prepare($conexao, $sqlInsert);
 
             if ($stmtInsert) {
-
-                mysqli_stmt_bind_param(
-                    $stmtInsert,
-                    "sssiiisis",
-                    $nome_usuario,
-                    $descr,
-                    $data_agendamento,
-                    $id_gestao,
-                    $id_professor,
-                    $id_ambientes,
-                    $horario,
-                    $usuario_id,
-                    $usuario_tipo
-                );
+                mysqli_stmt_bind_param($stmtInsert, "sssiiisis", $nome_usuario, $descr, $data_agendamento, $id_gestao, $id_professor, $id_ambientes, $horario, $usuario_id, $usuario_tipo);
 
                 if (mysqli_stmt_execute($stmtInsert)) {
                     header("Location: agendamento.php?sucesso=1");
@@ -303,9 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_agendamento'])
                 } else {
                     $erro = "Erro ao salvar o agendamento: " . mysqli_stmt_error($stmtInsert);
                 }
-
                 mysqli_stmt_close($stmtInsert);
-
             } else {
                 $erro = "Erro ao preparar o agendamento: " . mysqli_error($conexao);
             }
@@ -316,63 +190,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_agendamento'])
 // ==========================================================
 // 12. BUSCA LABORATÓRIOS OCUPADOS POR DATA/HORÁRIO
 // ==========================================================
-if (
-    isset($_GET["data"]) &&
-    isset($_GET["horario"]) &&
-    !empty($_GET["data"]) &&
-    !empty($_GET["horario"])
-) {
-
+if (isset($_GET["data"]) && isset($_GET["horario"]) && !empty($_GET["data"]) && !empty($_GET["horario"])) {
     $data = $_GET["data"];
     $horarioSelecionado = $_GET["horario"];
 
-    $sqlOcupados = "
-        SELECT id_ambientes
-        FROM agendamentos
-        WHERE data_agendamento = ?
-        AND horario = ?
-    ";
-
-    $stmtOcupados = mysqli_prepare(
-        $conexao,
-        $sqlOcupados
-    );
+    $sqlOcupados = "SELECT id_ambientes FROM agendamentos WHERE data_agendamento = ? AND horario = ?";
+    $stmtOcupados = mysqli_prepare($conexao, $sqlOcupados);
 
     if ($stmtOcupados) {
-        mysqli_stmt_bind_param(
-            $stmtOcupados,
-            "ss",
-            $data,
-            $horarioSelecionado
-        );
+        mysqli_stmt_bind_param($stmtOcupados, "ss", $data, $horarioSelecionado);
         mysqli_stmt_execute($stmtOcupados);
-
-        $resultadoOcupados = mysqli_stmt_get_result(
-            $stmtOcupados
-        );
+        $resultadoOcupados = mysqli_stmt_get_result($stmtOcupados);
         while ($linha = mysqli_fetch_assoc($resultadoOcupados)) {
             $ocupados[] = (int)$linha["id_ambientes"];
         }
         mysqli_stmt_close($stmtOcupados);
     }
 }
-
 ?>
 
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Agendamento</title>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="../css/agendamento.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-
 </head>
 
 <body>
@@ -407,26 +254,16 @@ if (
     </nav>
 </header>
 
-
 <section class="titulo">
     <h1>Agendamento</h1>
 </section>
 
-<!-- =====================================================
-     LOGOUT
-====================================================== -->
-<form action="agendamento.php" method="POST" style="display:inline;">
-    <input type="hidden" name="logout" value="1">
-    <button type="submit" style="background:none; border:none; color:#ff4d4d; cursor:pointer; font:inherit;">
-        <i class="fa-solid fa-right-from-bracket"></i> Sair
-    </button>
-</form>
+<a href="../login/login.php" style="color:#ff4d4d; text-decoration:none; font:inherit; display:inline-block;">
+    <i class="fa-solid fa-right-from-bracket"></i> Sair
+</a>
 
 <div class="container">
 
-    <!-- =================================================
-         FILTROS
-    ================================================== -->
     <div class="filtros">
         <div class="campo">
             <label for="data">Data:</label>
@@ -435,7 +272,6 @@ if (
 
         <div class="campo">
             <label for="horario">Horário: </label>
-
             <div class="campo-horario">
                 <select id="horario" name="horario">
                     <option value="" selected disabled></option>
@@ -461,9 +297,6 @@ if (
         </div>
     </div>
 
-    <!-- =================================================
-         MENSAGENS
-    ================================================== -->
     <?php if (!empty($mensagem)): ?>
         <div style="background:#d4edda; color:#155724; padding:12px; border-radius:8px; margin:15px 0;">
             <i class="fa-solid fa-circle-check"></i>
@@ -481,75 +314,87 @@ if (
     <div class="conteudo">
 
         <!-- =================================================
-             MAPA DOS LABORATÓRIOS
+             MAPA DE LABORATÓRIOS (EXIBINDO LAB 1, LAB 2...)
         ================================================== -->
         <div class="area-laboratorios">
 
-            <!-- DS -->
+            <!-- 1. LABORATÓRIOS DE DS -->
             <div class="titulo-laboratorios">
                 <h2>Laboratórios de DS</h2>
             </div>
-
             <div class="mapa">
-                <?php for ($i = 1; $i <= 5; $i++): ?>
-                    <?php 
-                        $bloqueado = in_array($i, $ambientesBloqueados);
-                        $ocup = in_array($i, $ocupados);
-                        $classe = ($bloqueado || $ocup) ? 'ocupado' : '';
-                        $onclick = $bloqueado 
-                            ? "mostrarAlertaBloqueio()" 
-                            : ($ocup ? "" : "selecionarLab($i)");
-                    ?>
+                <?php
+                $sqlDS = "SELECT id_ambientes, nome, status FROM ambientes WHERE tipo = 'DS' ORDER BY id_ambientes";
+                $resDS = mysqli_query($conexao, $sqlDS);
+                $contador = 1;
+                while ($amb = mysqli_fetch_assoc($resDS)):
+                    $idAmb = (int)$amb['id_ambientes'];
+                    $bloqueado = in_array($idAmb, $ambientesBloqueados);
+                    $ocup = in_array($idAmb, $ocupados);
+                    $classe = ($bloqueado || $ocup) ? 'ocupado' : '';
+                    $onclick = $bloqueado ? "mostrarAlertaBloqueio()" : ($ocup ? "" : "selecionarLab($idAmb, 'LAB $contador')");
+                ?>
                     <div class="lab <?= $classe ?>" onclick="<?= $onclick ?>">
-                        LAB <?= $i ?>
+                        LAB <?= $contador ?>
                     </div>
-                <?php endfor; ?>
+                <?php 
+                    $contador++;
+                endwhile; 
+                ?>
             </div>
 
             <br><br>
 
-            <!-- ADM / RH (IDs 6 e 7) -->
+            <!-- 2. LABORATÓRIOS DE ADM / RH -->
             <div class="titulo-laboratorios">
                 <h2>Laboratórios de ADM / RH</h2>
             </div>
-
             <div class="mapa">
-                <?php for ($i = 6; $i <= 7; $i++): ?>
-                    <?php 
-                        $bloqueado = in_array($i, $ambientesBloqueados);
-                        $ocup = in_array($i, $ocupados);
-                        $classe = ($bloqueado || $ocup) ? 'ocupado' : '';
-                        $onclick = $bloqueado 
-                            ? "mostrarAlertaBloqueio()" 
-                            : ($ocup ? "" : "selecionarLab($i)");
-                    ?>
+                <?php
+                $sqlAdmRh = "SELECT id_ambientes, nome, status FROM ambientes WHERE tipo IN ('ADM', 'RH') ORDER BY id_ambientes";
+                $resAdmRh = mysqli_query($conexao, $sqlAdmRh);
+                $contador = 1;
+                while ($amb = mysqli_fetch_assoc($resAdmRh)):
+                    $idAmb = (int)$amb['id_ambientes'];
+                    $bloqueado = in_array($idAmb, $ambientesBloqueados);
+                    $ocup = in_array($idAmb, $ocupados);
+                    $classe = ($bloqueado || $ocup) ? 'ocupado' : '';
+                    $onclick = $bloqueado ? "mostrarAlertaBloqueio()" : ($ocup ? "" : "selecionarLab($idAmb, 'LAB $contador')");
+                ?>
                     <div class="lab <?= $classe ?>" onclick="<?= $onclick ?>">
-                        LAB <?= ($i == 6) ? '1' : '2' ?>
+                        LAB <?= $contador ?>
                     </div>
-                <?php endfor; ?>
+                <?php 
+                    $contador++;
+                endwhile; 
+                ?>
             </div>
 
             <br><br>
 
-            <!-- AUTOMAÇÃO (IDs 8 e 9) -->
+            <!-- 3. LABORATÓRIOS DE AUTOMAÇÃO -->
             <div class="titulo-laboratorios">
                 <h2>Laboratórios de Automação</h2>
             </div>
-
             <div class="mapa">
-                <?php for ($i = 8; $i <= 9; $i++): ?>
-                    <?php 
-                        $bloqueado = in_array($i, $ambientesBloqueados);
-                        $ocup = in_array($i, $ocupados);
-                        $classe = ($bloqueado || $ocup) ? 'ocupado' : '';
-                        $onclick = $bloqueado 
-                            ? "mostrarAlertaBloqueio()" 
-                            : ($ocup ? "" : "selecionarLab($i)");
-                    ?>
+                <?php
+                $sqlAut = "SELECT id_ambientes, nome, status FROM ambientes WHERE tipo = 'AUT' ORDER BY id_ambientes";
+                $resAut = mysqli_query($conexao, $sqlAut);
+                $contador = 1;
+                while ($amb = mysqli_fetch_assoc($resAut)):
+                    $idAmb = (int)$amb['id_ambientes'];
+                    $bloqueado = in_array($idAmb, $ambientesBloqueados);
+                    $ocup = in_array($idAmb, $ocupados);
+                    $classe = ($bloqueado || $ocup) ? 'ocupado' : '';
+                    $onclick = $bloqueado ? "mostrarAlertaBloqueio()" : ($ocup ? "" : "selecionarLab($idAmb, 'LAB $contador')");
+                ?>
                     <div class="lab <?= $classe ?>" onclick="<?= $onclick ?>">
-                        LAB <?= ($i == 8) ? '1' : '2' ?>
+                        LAB <?= $contador ?>
                     </div>
-                <?php endfor; ?>
+                <?php 
+                    $contador++;
+                endwhile; 
+                ?>
             </div>
 
         </div>
@@ -582,9 +427,6 @@ if (
             </div>
         </div>
 
-        <!-- =================================================
-             LEGENDA
-        ================================================== -->
         <div class="legenda">
             <h2> Legenda:</h2>
             <div class="item">
@@ -599,7 +441,6 @@ if (
     </div>
 </div>
 
-<!-- Modal de alerta para data e horário não preenchidos -->
 <div id="alertaDataHorario" class="overlay-alerta">
     <div class="caixa-alerta">
         <button type="button" class="fechar-alerta" onclick="fecharAlertaDataHorario()">&times;</button>
@@ -609,7 +450,6 @@ if (
     </div>
 </div>
 
-<!-- Modal de alerta específico para ambiente bloqueado -->
 <div id="alertaBloqueio" class="overlay-alerta">
     <div class="caixa-alerta">
         <button type="button" class="fechar-alerta" onclick="fecharAlertaBloqueio()">&times;</button>
@@ -650,7 +490,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 });
 
-function selecionarLab(id) {
+function selecionarLab(id, nome) {
     const data = document.getElementById("data").value;
     const horario = document.getElementById("horario").value;
 
@@ -660,7 +500,7 @@ function selecionarLab(id) {
     }
 
     document.getElementById("overlayReserva").classList.add("ativo");
-    document.getElementById("labEscolhido").innerHTML = "<strong>Laboratório ID:</strong> " + id;
+    document.getElementById("labEscolhido").innerHTML = "<strong>Laboratório:</strong> " + nome;
     document.getElementById("dataEscolhida").innerHTML = "<strong>Data:</strong> " + data;
     document.getElementById("horarioEscolhido").innerHTML = "<strong>Horário:</strong> " + horario;
 
@@ -700,7 +540,7 @@ window.onpageshow = function(event) {
                 <button class="btn btn-warning text-white btn-block" onclick="voltar()">Voltar</button>
                 <script>
                   function voltar(){
-                    history.back();
+                    window.location.href = '../opcoes.html';
                   }
                 </script>
             </div>
