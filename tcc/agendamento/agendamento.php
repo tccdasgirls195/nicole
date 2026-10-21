@@ -796,7 +796,7 @@ if ($resultadoAmbientes) {
                                     ? $nomeAmbiente
                                     : 'LAB ' . $numeroAmbiente;
                                 $numeroAmbiente++;
-                                $estaOcupado = in_array($idAmbiente, $ocupados);
+                                $estaOcupado = in_array($idAmbiente, array_map('intval', $ocupados), true);
                             ?>
                                 <div
                                     class="lab <?= $estaOcupado ? 'ocupado' : '' ?>"
@@ -807,6 +807,9 @@ if ($resultadoAmbientes) {
                                     <?php endif; ?>
                                 >
                                     <?= htmlspecialchars($nomeExibicao, ENT_QUOTES, 'UTF-8') ?>
+                                    <?php if ($estaOcupado): ?>
+                                        <small>Ocupado</small>
+                                    <?php endif; ?>
                                 </div>
                             <?php endforeach; ?>
                         </div>
@@ -1176,5 +1179,4 @@ function voltar() {
 
 </body>
 </html>
-
 
