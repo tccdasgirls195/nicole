@@ -1,6 +1,6 @@
-drop database MODELO_TCC;
 create database MODELO_TCC;
 use MODELO_TCC;
+
 
 create table administrador (
 id_administrador int primary key auto_increment,
@@ -271,10 +271,11 @@ SELECT
 FROM agendamentos a
 INNER JOIN ambientes amb
     ON a.id_ambientes = amb.id_ambientes;
+    
+    alter table calendario modify id_turma int null;
+    alter table ambientes add column status enum('Ativo', 'Bloqueado') default 'Ativo';
+    alter table agendamentos modify column status enum('Pendente', 'Aprovada', 'Recusada', 'Cancelada') default 'Pendente';
 
-alter table calendario modify id_turma int null;
-
-alter table ambientes add column status enum('Ativo', 'Bloqueado') default 'Ativo';
 
 -- Alterar tipo "auditório" para "outros"
 ALTER TABLE ambientes
