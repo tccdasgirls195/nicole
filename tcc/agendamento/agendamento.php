@@ -3,6 +3,17 @@
 // INICIA A SESSÃO
 session_start();
 
+// LOGOUT
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
+
+    session_unset();
+    session_destroy();
+
+    header("Location: ../index.php");
+    exit();
+}
+
+
 //VERIFICA SE O USUÁRIO ESTÁ LOGADO
 if (!isset($_SESSION['usuario_id'])) {
     header("Location: ../index.php");
@@ -17,16 +28,6 @@ $tiposPermitidos = [
 ];
 
 if (!in_array($_SESSION['usuario_tipo'], $tiposPermitidos)) {
-    header("Location: ../index.php");
-    exit();
-}
-
-// LOGOUT
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
-
-    session_unset();
-    session_destroy();
-
     header("Location: ../index.php");
     exit();
 }
@@ -251,10 +252,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_agendamento'])
 
         $erro = "Selecione um horário.";
 
-    } elseif (empty($descr)) {
-
-        $erro = "Digite uma descrição para o agendamento.";
-
     } elseif ($id_gestao === null) {
 
         $erro = "Não foi possível localizar a Gestão no sistema.";
@@ -265,30 +262,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_agendamento'])
 
     } else {
 
-        // CONFIRMA QUE O AMBIENTE EXISTE E ESTÁ ATIVO
-        $sqlAmbienteAtivo = "
-            SELECT id_ambientes
-            FROM ambientes
-            WHERE id_ambientes = ?
-              AND (status = 'Ativo' OR status IS NULL OR status = '')
-            LIMIT 1
-        ";
-        $stmtAmbienteAtivo = mysqli_prepare($conexao, $sqlAmbienteAtivo);
-        if ($stmtAmbienteAtivo) {
-            mysqli_stmt_bind_param($stmtAmbienteAtivo, "i", $id_ambientes);
-            mysqli_stmt_execute($stmtAmbienteAtivo);
-            $resultadoAmbienteAtivo = mysqli_stmt_get_result($stmtAmbienteAtivo);
-            if (mysqli_num_rows($resultadoAmbienteAtivo) === 0) {
-                $erro = "Este ambiente não está disponível para agendamento.";
-            }
-            mysqli_stmt_close($stmtAmbienteAtivo);
-        } else {
-            $erro = "Não foi possível verificar a disponibilidade do ambiente.";
-        }
-
         // VERIFICA SE O LABORATÓRIO JÁ ESTÁ OCUPADO
 
-        if (empty($erro)) {
         $sqlVerifica = "
             SELECT id_agendamentos
             FROM agendamentos
@@ -332,8 +307,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_agendamento'])
             $erro = "Erro ao verificar disponibilidade.";
         }
 
-
-        }
 
         // SE ESTIVER LIVRE, SALVA O AGENDAMENTO
 
@@ -452,22 +425,38 @@ if (
     }
 }
 
-// BUSCA AMBIENTES CADASTRADOS QUE NÃO ESTÃO FIXOS NO MAPA ABAIXO.
-// Assim, qualquer novo ambiente ativo cadastrado no gerenciamento aparece
-// automaticamente na tela de agendamentos, sem depender de um ID específico.
-// Os IDs 1 a 9 já são exibidos nos mapas fixos de DS, ADM/RH e Automação.
-$outrosAtivos = [];
-$sqlOutros = "
-    SELECT id_ambientes, nome
+// BUSCA TODOS OS AMBIENTES ATIVOS CADASTRADOS NO BANCO.
+ // A tela de agendamento passa a ser dinâmica: qualquer ambiente novo
+ // aparece automaticamente dentro da seção correspondente ao seu tipo.
+$ambientesPorTipo = [
+    'DS' => [],
+    'AUT' => [],
+    'ADM' => [],
+    'Outros' => []
+];
+
+$sqlAmbientes = "
+    SELECT id_ambientes, nome, tipo
     FROM ambientes
-    WHERE (status = 'Ativo' OR status IS NULL OR status = '')
-      AND (tipo = 'Outros' OR id_ambientes NOT IN (1, 2, 3, 4, 5, 6, 7, 8, 9))
+    WHERE status = 'Ativo' OR status IS NULL OR status = ''
     ORDER BY nome ASC
 ";
-$resultadoOutros = mysqli_query($conexao, $sqlOutros);
-if ($resultadoOutros) {
-    while ($linhaOutros = mysqli_fetch_assoc($resultadoOutros)) {
-        $outrosAtivos[] = $linhaOutros;
+$resultadoAmbientes = mysqli_query($conexao, $sqlAmbientes);
+
+if ($resultadoAmbientes) {
+    while ($ambiente = mysqli_fetch_assoc($resultadoAmbientes)) {
+        $tipoAmbiente = strtoupper(trim((string) ($ambiente['tipo'] ?? '')));
+
+        if ($tipoAmbiente === 'DS') {
+            $ambientesPorTipo['DS'][] = $ambiente;
+        } elseif ($tipoAmbiente === 'AUT') {
+            $ambientesPorTipo['AUT'][] = $ambiente;
+        } elseif ($tipoAmbiente === 'ADM') {
+            $ambientesPorTipo['ADM'][] = $ambiente;
+        } else {
+            // Tipos vazios ou não reconhecidos também ficam em Outros.
+            $ambientesPorTipo['Outros'][] = $ambiente;
+        }
     }
 }
 
@@ -511,7 +500,7 @@ if ($resultadoOutros) {
             <a href="#" class="has-submenu">A Etec</a>
             <ul class="submenu">
                 <li>
-                    <a href="../login/eventos_login.php">Eventos</a>
+                    <a href="../calendario/calendario.php">Eventos</a>
                 </li>
             </ul>
         </li>
@@ -535,10 +524,15 @@ if ($resultadoOutros) {
 
         <button
             type="button"
-            class="botao-header botao-menu"
+            class="botao-header botao-menu" style="position: relative;"
             aria-label="Abrir menu lateral"
             onclick="abrirBarraLateral()">
             <i class="fa-solid fa-bars"></i>
+            <span
+                id="indicadorNotificacoes"
+                aria-label="Há notificações não lidas"
+                style="display: none; position: absolute; top: -3px; right: -3px; width: 11px; height: 11px; background: #dc2626; border: 2px solid #fff; border-radius: 50%; pointer-events: none;">
+            </span>
         </button>
 
     </div>
@@ -580,12 +574,19 @@ if ($resultadoOutros) {
 
         <?php elseif ($usuario_tipo === 'coordenador'): ?>
 
-            <a href="#" class="opcao-lateral">
+            <a href="../gerenciamento_representante/gerenciar_representantes.php" class="opcao-lateral">
                 <i class="fa-solid fa-user-plus"></i>
                 <span>Cadastro representante</span>
             </a>
 
-        <?php endif; ?>
+        <?php elseif ($usuario_tipo === 'administrador'): ?>
+
+    <a href="../opcoes.php" class="opcao-lateral">
+        <i class="fa-solid fa-gear"></i>
+        <span>Opções</span>
+    </a>
+
+<?php endif; ?>
 
     </div>
 
@@ -607,11 +608,11 @@ if ($resultadoOutros) {
                     <?php foreach ($notificacoes as $notificacao): ?>
                         <?php
                             $nomeAmbiente = $notificacao['nome_ambiente'];
-                            if ($notificacao['tipo_ambiente'] !== 'Outros') {
+                            if ($notificacao['tipo_ambiente'] !== 'Auditório') {
                                 $nomeAmbiente .= ' - ' . $notificacao['tipo_ambiente'];
                             }
                         ?>
-                        <a class="notificacao notificacao-link" href="solicitacoes_gestao.php">
+                        <a class="notificacao notificacao-link" data-notificacao-id="<?= htmlspecialchars((string) ($notificacao['id_agendamentos'] ?? '') . '-' . (string) ($notificacao['status'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" href="solicitacoes_gestao.php">
                             <i class="fa-solid fa-bell notificacao-pendente"></i>
                             <span>
                                 Nova solicitação: <?= htmlspecialchars($notificacao['nome_prof']) ?>
@@ -636,12 +637,12 @@ if ($resultadoOutros) {
                     <?php foreach ($notificacoes as $notificacao): ?>
                         <?php
                             $nomeAmbiente = $notificacao['nome_ambiente'];
-                            if ($notificacao['tipo_ambiente'] !== 'Outros') {
+                            if ($notificacao['tipo_ambiente'] !== 'Auditório') {
                                 $nomeAmbiente .= ' - ' . $notificacao['tipo_ambiente'];
                             }
                             $aprovada = $notificacao['status'] === 'Aprovada';
                         ?>
-                        <a class="notificacao notificacao-link" href="meus-agendamentos.php">
+                        <a class="notificacao notificacao-link" data-notificacao-id="<?= htmlspecialchars((string) ($notificacao['id_agendamentos'] ?? '') . '-' . (string) ($notificacao['status'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" href="meus-agendamentos.php">
                             <?php if ($aprovada): ?>
                                 <i class="fa-solid fa-circle-check notificacao-ok"></i>
                             <?php else: ?>
@@ -764,103 +765,59 @@ if ($resultadoOutros) {
     <div class="conteudo">
 
 
-        <!-- MAPA DOS LABORATÓRIOS -->
-
+        <!-- AMBIENTES SEPARADOS DINAMICAMENTE POR TIPO -->
         <div class="area-laboratorios">
+            <?php
+            $titulosTipos = [
+                'DS' => 'Laboratórios de DS',
+                'AUT' => 'Laboratórios de Automação',
+                'ADM' => 'Laboratórios de ADM / RH',
+                'Outros' => 'Outros ambientes'
+            ];
+            foreach ($titulosTipos as $tipo => $titulo):
+                $listaAmbientes = $ambientesPorTipo[$tipo];
+            ?>
+                <section class="grupo-ambientes">
+                    <div class="titulo-laboratorios">
+                        <h2><?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?></h2>
+                    </div>
 
-    <!-- DS -->
-    <div class="titulo-laboratorios">
-        <h2>Laboratórios de DS</h2>
-    </div>
-
-    <div class="mapa">
-
-        <div class="lab <?= in_array(1, $ocupados) ? 'ocupado' : '' ?>"
-             onclick="<?= in_array(1, $ocupados) ? '' : 'selecionarLab(1)' ?>">
-            LAB 1
-        </div>
-
-        <div class="lab <?= in_array(2, $ocupados) ? 'ocupado' : '' ?>"
-             onclick="<?= in_array(2, $ocupados) ? '' : 'selecionarLab(2)' ?>">
-            LAB 2
-        </div>
-
-        <div class="lab <?= in_array(3, $ocupados) ? 'ocupado' : '' ?>"
-             onclick="<?= in_array(3, $ocupados) ? '' : 'selecionarLab(3)' ?>">
-            LAB 3
-        </div>
-
-        <div class="lab <?= in_array(4, $ocupados) ? 'ocupado' : '' ?>"
-             onclick="<?= in_array(4, $ocupados) ? '' : 'selecionarLab(4)' ?>">
-            LAB 4
-        </div>
-
-        <div class="lab <?= in_array(5, $ocupados) ? 'ocupado' : '' ?>"
-             onclick="<?= in_array(5, $ocupados) ? '' : 'selecionarLab(5)' ?>">
-            LAB 5
-        </div>
-
-    </div>
-
-    <br><br>
-
-    <!-- ADM / RH -->
-    <div class="titulo-laboratorios">
-        <h2>Laboratórios de ADM / RH</h2>
-    </div>
-
-    <div class="mapa">
-
-        <div class="lab <?= in_array(6, $ocupados) ? 'ocupado' : '' ?>"
-             onclick="<?= in_array(6, $ocupados) ? '' : 'selecionarLab(6)' ?>">
-            LAB 1
-        </div>
-
-        <div class="lab <?= in_array(7, $ocupados) ? 'ocupado' : '' ?>"
-             onclick="<?= in_array(7, $ocupados) ? '' : 'selecionarLab(7)' ?>">
-            LAB 2
-        </div>
-
-    </div>
-
-   <br><br>
-    <!-- AUTOMAÇÃO -->
-    <div class="titulo-laboratorios">
-        <h2>Laboratórios de Automação</h2>
-    </div>
-
-    <div class="mapa">
-
-        <div class="lab <?= in_array(8, $ocupados) ? 'ocupado' : '' ?>"
-             onclick="<?= in_array(8, $ocupados) ? '' : 'selecionarLab(8)' ?>">
-            LAB 1
-        </div>
-
-        <div class="lab <?= in_array(9, $ocupados) ? 'ocupado' : '' ?>"
-             onclick="<?= in_array(9, $ocupados) ? '' : 'selecionarLab(9)' ?>">
-            LAB 2
-        </div>
-
-    </div>
-
-    <?php if (!empty($outrosAtivos)): ?>
-        <br><br>
-        <div class="titulo-laboratorios">
-            <h2>Outros Ambientes</h2>
-        </div>
-        <div class="mapa">
-            <?php foreach ($outrosAtivos as $outro): ?>
-                <?php $idOutro = (int) $outro['id_ambientes']; ?>
-                <?php $nomeOutro = $outro['nome']; ?>
-                <div class="lab <?= in_array($idOutro, array_map('intval', $ocupados), true) ? 'ocupado' : '' ?>"
-                     onclick="<?= in_array($idOutro, array_map('intval', $ocupados), true) ? '' : 'selecionarLab(' . $idOutro . ', ' . json_encode($nomeOutro, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) . ')' ?>">
-                    <?= htmlspecialchars($nomeOutro, ENT_QUOTES, 'UTF-8') ?>
-                </div>
+                    <?php if (empty($listaAmbientes)): ?>
+                        <p class="sem-ambientes">Nenhum ambiente cadastrado neste tipo.</p>
+                    <?php else: ?>
+                        <div class="mapa">
+                            <?php $numeroAmbiente = 1; ?>
+                            <?php foreach ($listaAmbientes as $ambiente):
+                                $idAmbiente = (int) $ambiente['id_ambientes'];
+                                $nomeAmbiente = (string) $ambiente['nome'];
+                                // Mantém os cartões curtos como no layout original.
+                                // A numeração reinicia em cada tipo de ambiente.
+                                $nomeExibicao = ($tipo === 'Outros')
+                                    ? $nomeAmbiente
+                                    : 'LAB ' . $numeroAmbiente;
+                                $numeroAmbiente++;
+                                $estaOcupado = in_array($idAmbiente, array_map('intval', $ocupados), true);
+                            ?>
+                                <div
+                                    class="lab <?= $estaOcupado ? 'ocupado' : '' ?>"
+                                    <?= $estaOcupado ? 'aria-disabled="true" title="Ambiente ocupado neste horário"' : 'role="button" tabindex="0" title="Selecionar ambiente"' ?>
+                                    <?php if (!$estaOcupado): ?>
+                                        onclick='selecionarLab(<?= $idAmbiente ?>, <?= json_encode($nomeExibicao, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'
+                                        onkeydown="if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); selecionarLab(<?= $idAmbiente ?>, <?= htmlspecialchars(json_encode($nomeExibicao, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8') ?>); }"
+                                    <?php endif; ?>
+                                >
+                                    <?= htmlspecialchars($nomeExibicao, ENT_QUOTES, 'UTF-8') ?>
+                                    <?php if ($estaOcupado): ?>
+                                        <small>Ocupado</small>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </section>
+                <br><br>
             <?php endforeach; ?>
         </div>
-    <?php endif; ?>
-
-</div>
 
         <!--FORMULÁRIO de reserva-->
 
@@ -941,7 +898,6 @@ if ($resultadoOutros) {
             <textarea
                 name="descr"
                 maxlength="120"
-                required
                 placeholder="Descrição..."></textarea>
 
 
@@ -1051,7 +1007,7 @@ document.addEventListener(
 
 // SELECIONA LABORATÓRIO
 
-function selecionarLab(id, nomeAmbiente = "Laboratório " + id) {
+function selecionarLab(id, nomeAmbiente = null) {
     const data = document.getElementById("data").value;
 
     const horario = document.getElementById("horario").value;
@@ -1066,7 +1022,8 @@ function selecionarLab(id, nomeAmbiente = "Laboratório " + id) {
     document.getElementById("overlayReserva").classList.add("ativo");
 
     // Texto do laboratório
-    document.getElementById("labEscolhido").textContent = nomeAmbiente;
+    const nomeExibicao = nomeAmbiente || ("Laboratório " + id);
+    document.getElementById("labEscolhido").textContent = "Ambiente: " + nomeExibicao;
 
     // Texto da data
     document.getElementById("dataEscolhida").innerHTML ="<strong>Data:</strong> " + data;
@@ -1138,24 +1095,88 @@ if (event.persisted ||
 
 </script>
 
+<?php if (isset($_SESSION['usuario_tipo']) && $_SESSION['usuario_tipo'] === 'administrador'): ?>
 <section>
-      <div class="container">
+    <div class="container">
         <div class="row">
-          <div class="col-sm-2 offset-sm-5 text-center">
-            <button class="btn btn-warning text-white btn-block" onclick="voltar()">Voltar</button>
-            <script>
-              function voltar(){
-                history.back();
-              }
-            </script>
-          </div>
+            <div class="col-sm-2 offset-sm-5 text-center">
+                <button type="button"
+                        class="btn btn-warning text-white btn-block"
+                        onclick="voltar()">
+                    Voltar
+                </button>
+            </div>
         </div>
-      </div>
-    </section><!-- End About Section -->
+    </div>
+</section>
+
+<script>
+function voltar() {
+    window.history.back();
+}
+</script>
+<?php endif; ?>
 
 
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+
+<script>
+(function () {
+    const botaoMenu = document.querySelector('.botao-menu');
+    const areaNotificacoes = document.querySelector('.area-notificacoes');
+    const indicador = document.getElementById('indicadorNotificacoes');
+
+    if (!botaoMenu || !areaNotificacoes || !indicador) {
+        return;
+    }
+
+    const usuarioId = <?= json_encode((string) ($_SESSION['usuario_id'] ?? '0')) ?>;
+    const usuarioTipo = <?= json_encode((string) ($_SESSION['usuario_tipo'] ?? '')) ?>;
+    const chaveLeitura = 'tcc_notificacoes_lidas_' + usuarioTipo + '_' + usuarioId;
+    const obterId = function (notificacao) {
+        return notificacao.dataset.notificacaoId ||
+            (notificacao.href + '|' + notificacao.textContent.replace(/\s+/g, ' ').trim());
+    };
+
+    let lidas = new Set();
+
+    try {
+        const salvas = JSON.parse(localStorage.getItem(chaveLeitura) || '[]');
+        if (Array.isArray(salvas)) {
+            lidas = new Set(salvas.map(String));
+        }
+    } catch (erro) {
+        lidas = new Set();
+    }
+
+    const notificacoesAtuais = Array.from(areaNotificacoes.querySelectorAll('.notificacao-link'));
+
+    function atualizarIndicador() {
+        const existeNaoLida = notificacoesAtuais.some(function (notificacao) {
+            return !lidas.has(String(obterId(notificacao)));
+        });
+
+        indicador.style.display = existeNaoLida ? 'block' : 'none';
+    }
+
+    areaNotificacoes.addEventListener('click', function () {
+        notificacoesAtuais.forEach(function (notificacao) {
+            lidas.add(String(obterId(notificacao)));
+        });
+
+        try {
+            localStorage.setItem(chaveLeitura, JSON.stringify(Array.from(lidas)));
+        } catch (erro) {
+        }
+
+        atualizarIndicador();
+    });
+
+    atualizarIndicador();
+})();
+</script>
+
 </body>
 </html>
 
