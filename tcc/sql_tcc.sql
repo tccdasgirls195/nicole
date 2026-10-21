@@ -1,3 +1,4 @@
+drop database MODELO_TCC;
 create database MODELO_TCC;
 use MODELO_TCC;
 
@@ -277,14 +278,26 @@ INNER JOIN ambientes amb
     alter table agendamentos modify column status enum('Pendente', 'Aprovada', 'Recusada', 'Cancelada') default 'Pendente';
 
 
--- Alterar tipo "auditório" para "outros"
-ALTER TABLE ambientes
-    MODIFY tipo ENUM('DS', 'ADM', 'AUT', 'Auditório', 'Outros') NOT NULL;
 
-UPDATE ambientes
-SET tipo = 'Outros'
-WHERE tipo = 'Auditório';
-
--- Remove Auditório das opções permitidas no banco.
+-- 1. Permite temporariamente os tipos antigos e novos
 ALTER TABLE ambientes
-    MODIFY tipo ENUM('DS', 'ADM', 'AUT', 'Outros') NOT NULL;
+MODIFY COLUMN tipo ENUM(
+    'DS',
+    'ADM',
+    'AUT',
+    'Auditório',
+    'Outros'
+) NOT NULL;
+
+-- 2. Remove Auditório das opções permitidas
+ALTER TABLE ambientes
+MODIFY COLUMN tipo ENUM(
+    'DS',
+    'ADM',
+    'AUT',
+    'Outros'
+) NOT NULL;
+
+-- 3. Confere se a alteração funcionou
+SELECT id_ambientes, nome, tipo
+FROM ambientes;
