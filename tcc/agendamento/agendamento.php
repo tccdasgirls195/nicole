@@ -808,7 +808,6 @@ if ($resultadoAmbientes) {
                                 >
                                     <?= htmlspecialchars($nomeExibicao, ENT_QUOTES, 'UTF-8') ?>
                                     <?php if ($estaOcupado): ?>
-                                        <small>Ocupado</small>
                                     <?php endif; ?>
                                 </div>
                             <?php endforeach; ?>
