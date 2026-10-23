@@ -10,14 +10,13 @@ $max_tentativas = 5;
 $tempo_bloqueio_minutos = 15;
 
 // Verifica se o formulário foi enviado através do método POST
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['email'], $_POST['senha'])) {
 
-    // Remove espaços em branco extras do início e fim dos campos digitados
-    $email = trim($_POST['email']);
-    $senha = trim($_POST['senha']);
-    $ip    = $_SERVER['REMOTE_ADDR']; // Captura o IP do usuário
+   
+    $email = trim($_POST['email'] ?? '');
+    $senha = trim($_POST['senha'] ?? '');
+    $ip    = $_SERVER['REMOTE_ADDR']; 
 
-    // Valida se ambos os campos foram preenchidos
     if (!empty($email) && !empty($senha)) {
 
         // ==========================================
@@ -71,7 +70,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             foreach ($tabelas as $tabela => $id_coluna) {
 
                 // Prepara a instrução SQL para prevenir SQL Injection
-                $sql = "SELECT $id_coluna, email, senha FROM $tabela WHERE LOWER(TRIM(email)) = LOWER(TRIM(?))";
+                $sql = "SELECT $id_coluna, email, senha, status FROM $tabela WHERE LOWER(TRIM(email)) = LOWER(TRIM(?))";
                 $stmt = mysqli_prepare($conexao, $sql);
 
                 if ($stmt) {
@@ -93,6 +92,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         if (password_verify($senha, $usuario['senha'])) {
 
                             $usuarioEncontrado = true;
+
+                            // Impede o acesso de usuários bloqueados pelo gerenciamento.
+                            if (strtolower(trim($usuario['status'] ?? '')) === 'bloqueado') {
+                                $erro = "Seu acesso está bloqueado. Entre em contato com o administrador.";
+                                mysqli_stmt_close($stmt);
+                                break;
+                            }
 
                             // 2.1 SUCESSO: Limpa a tabela de tentativas falhas
                             $sql_del = "DELETE FROM tentativas_login WHERE ip = ? AND LOWER(TRIM(email)) = LOWER(TRIM(?))";
@@ -128,7 +134,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             // REDIRECIONA PARA A PÁGINA ESPECÍFICA DO PERFIL
                             $destinos = [
                                 'representante' => 'calendario/calendario.php',   // Representante vai para o Calendário
-                                'administrador' => 'opcoes.html',  
+                                'administrador' => 'opcoes.php',  
                                 'coordenador'   => 'agendamento/agendamento.php',  
                                 'professor'     => 'agendamento/agendamento.php',  
                                 'gestao'        => 'agendamento/solicitacoes_gestao.php'  
