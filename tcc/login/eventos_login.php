@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 session_start();
 
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
@@ -6,7 +6,7 @@ header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 header("Expires: 0");
 
-require_once dirname(__DIR__) . "/conexao.php";
+require_once "../conexao.php";
 
 /*
  * Ao abrir a tela de Eventos, o acesso especial anterior é apagado.
@@ -19,14 +19,6 @@ $erro = "";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    if (isset($_POST["apenas_visualizar"])) {
-
-        $_SESSION["eventos_editor"] = false;
-
-        header("Location: ../calendario/calendario.php");
-        exit();
-    }
-
     if (isset($_POST["entrar_representante"])) {
 
         $email = trim($_POST["email"] ?? "");
@@ -36,7 +28,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $erro = "Preencha o e-mail e a senha.";
         } else {
 
-            $sql = "SELECT id_representante, nome, email, senha, id_turma
+            $sql = "SELECT id_representante, nome, email, senha, id_turma, status
                     FROM representante
                     WHERE LOWER(TRIM(email)) = LOWER(TRIM(?))
                     LIMIT 1";
@@ -76,7 +68,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                     if ($senha_valida) {
 
-                        $_SESSION["eventos_editor"] = true;
+                        // Impede representantes bloqueados de acessar os eventos.
+                        if (strtolower(trim($representante["status"] ?? "")) === "bloqueado") {
+                            $erro = "Seu acesso está bloqueado. Entre em contato com o administrador.";
+                        } else {
+                            $_SESSION["eventos_editor"] = true;
                         $_SESSION["eventos_representante_id"] =
                             (int)$representante["id_representante"];
 
@@ -84,10 +80,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                         mysqli_stmt_close($stmt);
 
-                        header(
-                            "Location: ../calendario/calendario.php?turma=" . $id_turma
-                        );
-                        exit();
+                            header(
+                                "Location: ../calendario/calendario.php?turma=" . $id_turma
+                            );
+                            exit();
+                        }
                     }
                 }
 
@@ -104,7 +101,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
+    <title>Entrar - Calendário de Eventos</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="../css/login.css">
@@ -170,16 +167,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             </form>
 
-            <div class="eventos-separador">
-                <span>ou</span>
-            </div>
-
-            <form method="POST">
-                <button type="submit" name="apenas_visualizar" class="btn-visualizar">
-                    <i class="fa-solid fa-eye"></i>
-                    Apenas visualizar
-                </button>
-            </form>
 
         </div>
     </main>
